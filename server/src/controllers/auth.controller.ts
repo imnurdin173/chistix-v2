@@ -4,7 +4,8 @@ import {
   loginUser,
   loginWithGoogle,
   getMyProfile,
-  toPublicUser
+  toPublicUser,
+  verifyUserEmail
 } from "../services/auth.service";
 import { successResponse } from "../utils/response";
 import {
@@ -78,6 +79,19 @@ export const meHandler = async (req: Request, res: Response, next: NextFunction)
   } catch (err) {
     next(err);
   }
+};
+
+export const verifyEmailHandler = async (req:Request, res: Response, next:NextFunction) => {
+    try {
+        const token = req.query.token as string | undefined;
+        if(!token) {
+            return errorResponse(res, 400, "Token must be on URL");
+        }
+        const result = await verifyUserEmail(token);
+        return successResponse(res, 200, result.message);
+    } catch (err) {
+        next(err);
+    }
 };
 
 // SEMENTARA: untuk tes SMTP saja, nanti bisa dihapus
