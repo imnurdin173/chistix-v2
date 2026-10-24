@@ -77,6 +77,9 @@ export async function loginUser(input: LoginInput) {
   }
 
   const isPasswordValid = await bcrypt.compare(input.password, user.password);
+  if(!user.emailVerified) {
+    throw new AppError("Email not verrified yet. Please Check Inbox to verif woy", 403);
+  }
   if (!isPasswordValid) throw new AppError("Email atau password salah", 401);
 
   const token = signToken({ id: user.id, role: user.role });
@@ -196,4 +199,16 @@ export const verifyUserEmail = async (token:string) => {
     prisma.verification.delete({where: {id: verification.id}}),
   ]);
   return {message: "email verification succesful"};
+}
+
+export const resendVerificationEmail = async (email: string) => {
+  const user = await prisma.user.findUnique({where: {email}});
+
+  if(!user || user.deletedAt|| user.emailVerified) return;
+
+  await prisma.verification.deleteMany({where: {userId: user.id}});
+
+  const token = await createVerificationToken(user.id);
+  const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
+  await sendMail(user.email, "Verif Email Chistix", "verifyEmail", {name:user.name, link});
 }

@@ -5,13 +5,15 @@ import {
   loginWithGoogle,
   getMyProfile,
   toPublicUser,
-  verifyUserEmail
+  verifyUserEmail,
+  resendVerificationEmail
 } from "../services/auth.service";
 import { successResponse } from "../utils/response";
 import {
   registerSchema,
   loginSchema,
   googleLoginSchema,
+  resendSchema,
 } from "../validations/auth.validation";
 import { AppError } from "../utils/AppError";
 import { errorResponse } from "../utils/response";
@@ -94,20 +96,30 @@ export const verifyEmailHandler = async (req:Request, res: Response, next:NextFu
     }
 };
 
-// SEMENTARA: untuk tes SMTP saja, nanti bisa dihapus
-export const testEmailHandler = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await sendMail(
-      env.smtpUser,
-      "Preview: Email Verifikasi Chistix",
-      "verifyEmail", // nama file, tanpa .hbs
-      {
-        name: "Budi (Tes)",
-        link: "https://example.com/verifikasi-palsu", // dummy — diganti token asli di langkah berikutnya
-      }
-    );
-    return successResponse(res, 200, "Email terkirim! Cek inbox kamu");
-  } catch (err) {
-    next(err);
-  }
+// export const testEmailHandler = async (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     await sendMail(
+//       env.smtpUser,
+//       "Preview: Email Verifikasi Chistix",
+//       "verifyEmail", // nama file, tanpa .hbs
+//       {
+//         name: "Budi (Tes)",
+//         link: "https://example.com/verifikasi-palsu", // dummy — diganti token asli di langkah berikutnya
+//       }
+//     );
+//     return successResponse(res, 200, "Email terkirim! Cek inbox kamu");
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+export const resendVerificationHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {email} = resendSchema.parse(req.body);
+        await resendVerificationEmail(email);
+        return successResponse(res, 200, "Check your inbox, new verif link has been sent. (only if your email has registered but not verrified yes)");
+    } catch (err) {
+        next(err);
+    }
 };
+

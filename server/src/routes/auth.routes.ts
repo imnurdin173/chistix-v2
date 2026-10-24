@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { registerHandler, loginHandler, googleLoginHandler, meHandler, testEmailHandler, verifyEmailHandler } from "../controllers/auth.controller";
+import { registerHandler, loginHandler, googleLoginHandler, meHandler, verifyEmailHandler, resendVerificationHandler } from "../controllers/auth.controller";
 import { verifyToken } from "../middlewares/auth.midleware";
+import { resendSchema } from "../validations/auth.validation";
 
 const authRouter = Router();
 
@@ -8,6 +9,9 @@ authRouter.post("/register", registerHandler);
 authRouter.post("/login", loginHandler);
 authRouter.post("/google", googleLoginHandler);
 authRouter.get("/me", verifyToken, meHandler);
-authRouter.get("/test-email", testEmailHandler);
+// authRouter.get("/test-email", testEmailHandler);
 authRouter.get("/verify-email", verifyEmailHandler);
+authRouter.post("/resend-verification", resendVerificationHandler);
+
+
 export default authRouter;

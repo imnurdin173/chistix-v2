@@ -20,3 +20,7 @@ export const googleLoginSchema = z.object({
 })
 
 export type googleLoginInput = z.infer<typeof googleLoginSchema>;
+
+export const resendSchema = z.object({
+    email: z.email()
+});
