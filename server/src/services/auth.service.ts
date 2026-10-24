@@ -9,11 +9,11 @@ import type {
   LoginInput,
   RegisterInput,
   googleLoginInput,
-} from "../middlewares/auth.midleware";
+} from "../validations/auth.validation";
 
 const googleClient = new OAuth2Client(env.googleClientId);
 
-function toPublicUser<T extends { password?: string | null }>(
+export function toPublicUser<T extends { password?: string | null }>(
   user: T,
 ): Omit<T, "password"> {
   const { password, ...publicUser } = user;
@@ -21,8 +21,12 @@ function toPublicUser<T extends { password?: string | null }>(
 }
 
 function generateReferralCode(name: string): string {
-  const prefix =
-    (name.replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase() || "USER").padEnd(4, "X");
+  const prefix = (
+    name
+      .replace(/[^a-zA-Z]/g, "")
+      .slice(0, 4)
+      .toUpperCase() || "USER"
+  ).padEnd(4, "X");
   return `${prefix}${randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
@@ -141,4 +145,13 @@ export async function loginWithGoogle(input: googleLoginInput) {
       },
     },
   });
+}
+
+export async function getMyProfile(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user || user.deletedAt) {
+    throw new AppError("User Not FOund", 404);
+  }
+  return { user: toPublicUser(user) };
 }
