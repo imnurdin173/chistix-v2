@@ -71,7 +71,7 @@ model User {
   events        Event[]
   transactions  Transaction[]
   reviews       Review[]
-
+  verifications Verification[]
   @@map("user")
 }
 
@@ -90,14 +90,15 @@ model Account {
 }
 
 model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
+  id                String   @id @default(uuid())
+  token             String   @unique
+  expiresAt         DateTime
+  userId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
 
-  @@index([identifier])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+//  @@index([identifier])
   @@map("verification")
 }
 

@@ -1,22 +1,42 @@
-import z from "zod";
+import { Request, Response, NextFunction } from "express";
+import Jwt from "jsonwebtoken";
+import { env } from "../config/env";
+import { AppError } from "../utils/AppError";   
+import { jwt } from "zod";
+import { errorResponse } from "../utils/response";
 
-export const registerSchema = z.object({
-    name: z.string().min(2, "Name is Minimum 2 Character").max(100),
-    email: z.email("Email Address is not valid"),
-    password: z.string().min(6, "Password Minimum 6 Character"),
-    role: z.enum(["CUSTOMER", "ORGANIZER"]).default("CUSTOMER"),
-});
+interface AuthPayload {
+    id: string;
+    role:string;
+}
 
-export const loginSchema = z.object({
-    email: z.email("Email Adress is not valid"),
-    password: z.string().min(1, "Password is Empty ")
-})
+declare global {
+    namespace Express {
+        interface Request {
+            user?: AuthPayload;
+        }
+    }
+}
 
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
+export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
 
-export const googleLoginSchema = z.object({
-    credential: z.string().min(10, "Credential GOogle wajib diisi")
-})
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return errorResponse(res, 401, "Token tidak ditemukan, silakan login terlebih dahulu");
+  }
 
-export type googleLoginInput = z.infer<typeof googleLoginSchema>;
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = Jwt.verify(token, env.jwtSecret) as {
+      id: string;
+      email: string;
+      role: string;
+    };
+
+    req.user = decoded;
+    next();
+  } catch {
+    return errorResponse(res, 401, "Token tidak valid atau sudah kedaluwarsa");
+  }
+};

@@ -1,19 +1,21 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { randomBytes } from "node:crypto";
+import { randomBytes } from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
+import { sendMail } from "../utils/mailer";
+
 import type {
   LoginInput,
   RegisterInput,
   googleLoginInput,
-} from "../middlewares/auth.midleware";
+} from "../validations/auth.validation";
 
 const googleClient = new OAuth2Client(env.googleClientId);
 
-function toPublicUser<T extends { password?: string | null }>(
+export function toPublicUser<T extends { password?: string | null }>(
   user: T,
 ): Omit<T, "password"> {
   const { password, ...publicUser } = user;
@@ -21,8 +23,12 @@ function toPublicUser<T extends { password?: string | null }>(
 }
 
 function generateReferralCode(name: string): string {
-  const prefix =
-    (name.replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase() || "USER").padEnd(4, "X");
+  const prefix = (
+    name
+      .replace(/[^a-zA-Z]/g, "")
+      .slice(0, 4)
+      .toUpperCase() || "USER"
+  ).padEnd(4, "X");
   return `${prefix}${randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
@@ -48,6 +54,13 @@ export async function registerUser(input: RegisterInput) {
       referralCode: generateReferralCode(input.name),
     },
   });
+  try {
+    const token = await createVerificationToken(user.id);
+    const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
+    await sendMail(user.email, "Verification Account Chistix", "verifyEmail", {name: user.name, link});
+  } catch (err) {
+    console.error("Failed to send email verif, but registr still success: ", err);
+  }
   return { user: toPublicUser(user) };
 }
 
@@ -64,6 +77,9 @@ export async function loginUser(input: LoginInput) {
   }
 
   const isPasswordValid = await bcrypt.compare(input.password, user.password);
+  if(!user.emailVerified) {
+    throw new AppError("Email not verrified yet. Please Check Inbox to verif woy", 403);
+  }
   if (!isPasswordValid) throw new AppError("Email atau password salah", 401);
 
   const token = signToken({ id: user.id, role: user.role });
@@ -141,4 +157,58 @@ export async function loginWithGoogle(input: googleLoginInput) {
       },
     },
   });
+}
+
+export async function getMyProfile(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user || user.deletedAt) {
+    throw new AppError("User Not FOund", 404);
+  }
+  return { user: toPublicUser(user) };
+}
+
+export const createVerificationToken = async (userId: string) => {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now()+24*60*60*1000);
+  await prisma.verification.create({
+    data: {token, expiresAt, userId}
+  });
+  return token;
+}
+
+export const verifyUserEmail = async (token:string) => {
+  const verification = await prisma.verification.findUnique({
+    where: {token}
+  });
+
+  if (!verification) {
+    throw new AppError("Token Verif not valid", 400);
+  }
+
+  if (verification.expiresAt < new Date()) {
+    await prisma.verification.delete({where: {id:verification.id}});
+    throw new AppError("Token EXpired", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: {id:verification.userId},
+      data: {emailVerified: true},
+    }),
+    prisma.verification.delete({where: {id: verification.id}}),
+  ]);
+  return {message: "email verification succesful"};
+}
+
+export const resendVerificationEmail = async (email: string) => {
+  const user = await prisma.user.findUnique({where: {email}});
+
+  if(!user || user.deletedAt|| user.emailVerified) return;
+
+  await prisma.verification.deleteMany({where: {userId: user.id}});
+
+  const token = await createVerificationToken(user.id);
+  const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
+  await sendMail(user.email, "Verif Email Chistix", "verifyEmail", {name:user.name, link});
 }
