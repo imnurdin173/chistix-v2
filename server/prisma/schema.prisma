@@ -141,17 +141,18 @@ model Event {
 }
 
 model TicketType {
-  id             String    @id @default(uuid())
-  eventId        String
-  name           String
-  priceNormal    Int
-  priceAnchor    Int? // teknik strikethrough pricing anchoring
-  quota          Int
-  saleStart      DateTime?
-  saleEnd        DateTime?
-  createdAt      DateTime @default(now())
-  deletedAt      DateTime? 
-  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  eventId     String
+  name        String
+  priceNormal Int
+  priceAnchor Int? // teknik strikethrough pricing anchoring
+  quota       Int
+  sold        Int       @default(0)
+  saleStart   DateTime?
+  saleEnd     DateTime?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
   @@map("ticket_type")
