@@ -8,8 +8,8 @@ const daysFromNow = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 
 
 async function main() {
   // ── 1. Organizer dummy (upsert = aman dijalankan berulang) ──
+  
   const hashedPassword = await bcrypt.hash("Password123!", 10);
-
   const organizer = await prisma.user.upsert({
     where: { email: "organizer@chistix.test" },
     update: {}, // sudah ada? biarkan apa adanya
@@ -22,7 +22,19 @@ async function main() {
       referralCode: "Event-seed-01"
     },
   });
-
+const hashedpassfaker = await bcrypt.hash("rahasia123",10);
+    const orgfaker = await prisma.user.upsert({
+    where: { email: "orgfake@thip-like.com" },
+    update: {}, // sudah ada? biarkan apa adanya
+    create: {
+      email: "orgfake@thip-like.com",
+      password: hashedpassfaker,
+      name: "Org Faker",
+      role: "ORGANIZER",       // ⚠️ sesuaikan dengan sistem role di project kamu
+      emailVerified: true,     // seeder mem-bypass verifikasi email
+      referralCode: "orgfaker-01"
+    },
+  });
   // ── 2. Bersihkan event dummy lama ──
   // Kenapa delete-then-create, bukan upsert? Event tidak punya unique key.
   // TicketType lama ikut terhapus otomatis — ingat onDelete: Cascade 😉
@@ -72,12 +84,41 @@ async function main() {
       ticketTypes: {
         create: [ // nested write: 3 tier sekaligus dalam SATU panggilan
           { name: "Presale", priceNormal: 350000, priceAnchor: 450000, quota: 500, saleStart: daysFromNow(1), saleEnd: daysFromNow(14) },
-          { name: "Regular", priceNormal: 500000, quota: 1000 },
-          { name: "VIP", priceNormal: 1500000, priceAnchor: 2000000, quota: 100 },
+          { name: "Regular", priceNormal: 500000, quota: 1000, saleStart: daysFromNow(1), saleEnd: daysFromNow(14) },
+          { name: "VIP", priceNormal: 1500000, priceAnchor: 2000000, quota: 100, saleStart: daysFromNow(1), saleEnd: daysFromNow(14) },
         ],
       },
     },
   });
+
+  // ===== VOUCHER DUMMY (dibuat sistem, bukan organizer) =====
+await prisma.voucher.upsert({
+  where: { code: "CHISTIX10" },
+  update: {},
+  create: {
+    eventId: publishedEvent.id,   // ← sesuaikan: nama variabel event PUBLISHED di seeder-mu
+    code: "CHISTIX10",
+    discountType: "PERCENTAGE",
+    discount: 10,                 // potongan 10%
+    validStart: daysFromNow(0),
+    validEnd: daysFromNow(30),
+    maxUsage: 100,
+  },
+});
+
+await prisma.voucher.upsert({
+  where: { code: "HEMAT500K" },
+  update: {},
+  create: {
+    eventId: publishedEvent.id,
+    code: "HEMAT500K",
+    discountType: "FIXED",
+    discount: 500000,             // potongan Rp 500.000
+    validStart: daysFromNow(0),
+    validEnd: daysFromNow(30),
+    maxUsage: 50,
+  },
+});
 
   console.log("✅ Seeder selesai:", { draftEvent: draftEvent.id, publishedEvent: publishedEvent.id });
 }

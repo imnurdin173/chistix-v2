@@ -47,10 +47,9 @@ enum DiscountType {
 enum TransactionStatus {
   WAITING_PAYMENT
   WAITING_CONFIRM
-  DONE
-  REJECTED
+  PAID
+  CANCELLED
   EXPIRED
-  CANCELED
 }
 
 model User {
@@ -148,11 +147,13 @@ model TicketType {
   priceAnchor Int? // teknik strikethrough pricing anchoring
   quota       Int
   sold        Int       @default(0)
-  saleStart   DateTime?
+  saleStart   DateTime //hapus ? ketika sudah nyantai
   saleEnd     DateTime?
   createdAt   DateTime  @default(now())
   deletedAt   DateTime?
   event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  transaction Transaction[]
 
   @@index([eventId])
   @@map("ticket_type")
@@ -181,37 +182,42 @@ model Voucher {
 }
 
 model Transaction {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  voucherId String?
-  voucher   Voucher? @relation(fields: [voucherId], references: [id])
-
-  status      TransactionStatus @default(WAITING_PAYMENT)
-  quantity    Int               @default(1)
-  normalPrice Int
-  totalPrice  Int
-  discPrice   Int
-  pointUsed   Int               @default(0)
-
-  paymentProof    String?
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId         String
+  event           Event             @relation(fields: [eventId], references: [id])
+  ticketTypeId    String
+  ticketType      TicketType        @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  status          TransactionStatus @default(WAITING_PAYMENT)
+  quantity        Int
+  priceAtPurchase Int
+  discountAmount  Int               @default(0)
   paymentDeadline DateTime
-  ConfirmDeadline DateTime?
+  paidAt          DateTime?
+  voucherId       String?
+  voucher         Voucher?          @relation(fields: [voucherId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  eTickets ETicket[]
+  tickets Tickets[]
 
+  // totalPrice  Int
+  //  quantity    Int               @default(1)
+  // pointUsed   Int               @default(0)
+
+  // paymentProof    String?
+  //  ConfirmDeadline DateTime?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([ticketTypeId])
   @@map("transactions")
 }
 
-model ETicket {
+model Tickets {
   id            String      @id @default(uuid())
   transactionId String
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
@@ -228,7 +234,7 @@ model ETicket {
 
   reviews Review[]
 
-  @@map("ticketing")
+  @@map("tickets")
 }
 
 model Review {
@@ -239,8 +245,8 @@ model Review {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  eTicketId String
-  eTicket   ETicket @relation(fields: [eTicketId], references: [id])
+  ticketId String
+  tickets  Tickets @relation(fields: [ticketId], references: [id])
 
   ratingScore      Int
   reviewDesc       String?  @db.Text

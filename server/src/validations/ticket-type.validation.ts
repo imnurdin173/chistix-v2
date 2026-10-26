@@ -19,3 +19,14 @@ export const createTicketTypeSchema = ticketTypeBaseSchema
 );
 
 export type createTicketTypeInput = z.infer<typeof createTicketTypeSchema>;
+
+export const ticketTypeParamsSchema = z.object({
+    id: z.uuid("Format event-id not valid"),
+    ticketTypeId: z.uuid("Format Ticket Type id is not valid")
+});
+
+export const updateTicketTypeSchema = ticketTypeBaseSchema.partial().extend({
+    priceAnchor: z.int().positive().nullable().optional()
+});
+
+export type updateTicketTypeInput = z.infer<typeof updateTicketTypeSchema>;
