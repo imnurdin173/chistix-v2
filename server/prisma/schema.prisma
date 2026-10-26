@@ -18,19 +18,25 @@ enum Role {
   ORGANIZER
 }
 
-enum EventCategoryEnum {
+enum EventCategory {
   MUSIC
   SEMINAR
   TALKSHOW
+  ARTS_THEATRE
   SPORTS
+  COMMUNITY
   EXHIBITION
+  OTHER
 }
 
-enum EventStatusEnum {
+enum EventStatus {
   DRAFT
   UPCOMING
-  ON_STAGE
+  PUBLISHED
+  ONGOING
+  COMPLETED
   ENDED
+  CANCELLED
 }
 
 enum DiscountType {
@@ -41,37 +47,31 @@ enum DiscountType {
 enum TransactionStatus {
   WAITING_PAYMENT
   WAITING_CONFIRM
-  DONE
-  REJECTED
+  PAID
+  CANCELLED
   EXPIRED
-  CANCELED
-}
-
-enum TicketType {
-  PRESALE
-  REGULAR
-  VIP
 }
 
 model User {
-  id            String        @id @default(uuid())
+  id            String         @id @default(uuid())
   name          String
-  email         String        @unique
+  email         String         @unique
   password      String?
   //googleId              String?         @unique
   avatar        String?
-  emailVerified Boolean       @default(false)
-  role          Role          @default(CUSTOMER)
-  referralCode  String?       @unique
-  points        Int?          @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @default(now()) @updatedAt
+  emailVerified Boolean        @default(false)
+  role          Role           @default(CUSTOMER)
+  referralCode  String         @unique
+  points        Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
   deletedAt     DateTime?
   accounts      Account[]
   events        Event[]
   transactions  Transaction[]
   reviews       Review[]
   verifications Verification[]
+
   @@map("user")
 }
 
@@ -90,56 +90,38 @@ model Account {
 }
 
 model Verification {
-  id                String   @id @default(uuid())
-  token             String   @unique
-  expiresAt         DateTime
-  userId            String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @default(now()) @updatedAt
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-//  @@index([identifier])
+
+  //  @@index([identifier])
   @@map("verification")
 }
 
 model Event {
-  id          String            @id @default(uuid())
-  organizerId String
-  organizer   User              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  title       String
-  category    EventCategoryEnum @default(MUSIC)
-
-  startDate DateTime @default(now())
-  endDate   DateTime @default(now())
-
-  description     String  @db.Text
-  provinceId      String
-  provinceName    String
-  cityId          String
-  cityName        String
-  venueMaps       String?
-  venueDetail     String
-  totalQuotaTiket Int     @default(0)
-
-  ticketType TicketType
-
-  vipQuota       Int
-  vipPriceNormal Int
-  vipPriceFinal  Int
-
-  regularQuota       Int
-  regularPriceNormal Int
-  regularPriceFinal  Int
-
-  presaleQuota       Int
-  presalePriceNormal Int
-  presalePriceFinal  Int
-
+  id             String        @id @default(uuid())
+  organizerId    String
+  title          String
+  category       EventCategory @default(MUSIC)
+  description    String        @db.Text
+  eventStartDate DateTime
+  eventEndDate   DateTime
+  provinceId     String // data diambil dari API Emsifa
+  provinceName   String
+  cityId         String // data diambil dari API Emsifa
+  cityName       String
+  venueAddress   String
+  venueMapsUrl   String?
   thumbnailImage String
-  coverImages    String[] @default([])
-  videoUrl       String?
+  coverImages    String[] //url cloudinary
+  videoUrl       String? // url cloudinary
 
-  eventStatus           EventStatusEnum @default(DRAFT)
+  eventStatus           EventStatus @default(DRAFT)
   scheduledPublishStart DateTime?
   scheduledPublishEnd   DateTime?
 
@@ -150,12 +132,31 @@ model Event {
   vouchers     Voucher[]
   transactions Transaction[]
   reviewRating Review[]
+  ticketTypes  TicketType[]
+  organizer    User          @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
-  isPresale Boolean @default(false)
-  isVip     Boolean @default(false)
-  isRegular Boolean @default(false)
+  @@index([organizerId])
+  @@map("event")
+}
 
-  @@map("events")
+model TicketType {
+  id          String    @id @default(uuid())
+  eventId     String
+  name        String
+  priceNormal Int
+  priceAnchor Int? // teknik strikethrough pricing anchoring
+  quota       Int
+  sold        Int       @default(0)
+  saleStart   DateTime //hapus ? ketika sudah nyantai
+  saleEnd     DateTime?
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  transaction Transaction[]
+
+  @@index([eventId])
+  @@map("ticket_type")
 }
 
 model Voucher {
@@ -181,37 +182,42 @@ model Voucher {
 }
 
 model Transaction {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id])
-
-  voucherId String?
-  voucher   Voucher? @relation(fields: [voucherId], references: [id])
-
-  status      TransactionStatus @default(WAITING_PAYMENT)
-  quantity    Int               @default(1)
-  normalPrice Int
-  totalPrice  Int
-  discPrice   Int
-  pointUsed   Int               @default(0)
-
-  paymentProof    String?
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId         String
+  event           Event             @relation(fields: [eventId], references: [id])
+  ticketTypeId    String
+  ticketType      TicketType        @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  status          TransactionStatus @default(WAITING_PAYMENT)
+  quantity        Int
+  priceAtPurchase Int
+  discountAmount  Int               @default(0)
   paymentDeadline DateTime
-  ConfirmDeadline DateTime?
+  paidAt          DateTime?
+  voucherId       String?
+  voucher         Voucher?          @relation(fields: [voucherId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  eTickets ETicket[]
+  tickets Tickets[]
 
+  // totalPrice  Int
+  //  quantity    Int               @default(1)
+  // pointUsed   Int               @default(0)
+
+  // paymentProof    String?
+  //  ConfirmDeadline DateTime?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([ticketTypeId])
   @@map("transactions")
 }
 
-model ETicket {
+model Tickets {
   id            String      @id @default(uuid())
   transactionId String
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
@@ -228,7 +234,7 @@ model ETicket {
 
   reviews Review[]
 
-  @@map("ticketing")
+  @@map("tickets")
 }
 
 model Review {
@@ -239,8 +245,8 @@ model Review {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  eTicketId String
-  eTicket   ETicket @relation(fields: [eTicketId], references: [id])
+  ticketId String
+  tickets  Tickets @relation(fields: [ticketId], references: [id])
 
   ratingScore      Int
   reviewDesc       String?  @db.Text
