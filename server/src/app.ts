@@ -10,6 +10,8 @@ import eventRoutes from "./routes/event.routes";
 import { ZodError } from "zod";
 import { AppError } from "./utils/AppError";
 import organizerRoutes from "./routes/organizer.routes";
+import { mountRouter } from './utils/routeRegistry';
+import apiIndexRouter from './routes/apiIndex.routes';
 
 const app = express();
 
@@ -18,13 +20,23 @@ app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
-app.use("/api/health", healthRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/events", eventRoutes);
-app.get("/", (_req: Request, res: Response) => {
-  successResponse(res, 200, "Welcome to Chistix API");
-});
-app.use("/api/organizers", organizerRoutes);
+// app.get("/", (_req: Request, res: Response) => {
+//   successResponse(res, 200, "Welcome to Chistix API");
+// });
+
+// app.use("/api/health", healthRouter);
+// app.use("/api/auth", authRouter);
+// app.use("/api/events", eventRoutes);
+// app.use("/api/organizers", organizerRoutes);
+
+mountRouter(app, '/', 'Katalog API', apiIndexRouter);
+mountRouter(app, '/api', 'Katalog API', apiIndexRouter);
+mountRouter(app, "/api/health", 'Sistem',healthRouter);
+mountRouter(app, "/api/auth", 'Authentikasi', authRouter);
+mountRouter(app, "/api/events", 'Event', eventRoutes);
+mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
+mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
+
 
 //---------------------- batas error :v
 
