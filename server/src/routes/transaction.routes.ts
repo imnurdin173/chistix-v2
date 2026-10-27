@@ -6,5 +6,8 @@ const router = Router();
 
 // router.post('/', verifyToken, authorize('USER'), transactionController.createTransactionHandler);
 router.post('/', verifyToken, transactionController.createTransactionHandler);
+router.get("/", verifyToken, transactionController.listMyTransactionsHandler );
+router.get("/:id", verifyToken, transactionController.getTransactionHandler);
+router.post("/:id/cancel", verifyToken, transactionController.cancelTransactionHandler);
 
 export default router;

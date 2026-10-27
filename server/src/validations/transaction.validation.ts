@@ -6,3 +6,14 @@ export const createTransactionSchema = z.object({
     .int('quantity must be number int')
     .min(1, 'Minimum buy 1 ticket')
 });
+
+export const listTransactionsQuerySchema = z.object({
+    status: z.enum(["WAITING_PAYMENT", "PAID", "CANCELLED", "EXPIRED"])
+    .optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(50).default(10)
+});
+
+export const transactionParamsSchema = z.object({
+    id: z.uuid("Format id Transaction is not valid"),
+});    
