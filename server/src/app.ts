@@ -41,6 +41,7 @@ mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
 mountRouter(app, '/api/transactions', 'Transaksi', transactionRoutes);
 mountRouter(app, "/api/payments","Pembayaran",paymentRouter);
 
+
 //---------------------- batas error :v
 
 app.use((req: Request, res: Response) => {
@@ -73,11 +74,3 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 export default app;
-
-
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjkwOTA1YzI2LTQ0MTMtNDkwMC1iNDQ2LTlkYzZjOWUyNWZkYyIsInJvbGUiOiJPUkdBTklaRVIiLCJpYXQiOjE3OTI5MjM3NDMsImV4cCI6MTc5MzUyODU0M30.sMh1jfMly8T4mRqSg3XYUumERNksCgO0O_yI4saWBLo
-// { "email": "organizer@chistix.test", "password": "Password123!" }
-// {"email":"orgfake@thip-like.com","password":"rahasia123"}
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImZkYWEzNThhLTdiZjEtNDU0Mi1iNTU5LTRkYjhlNWE2YTA1OSIsInJvbGUiOiJPUkdBTklaRVIiLCJpYXQiOjE3OTI5MjM4NzQsImV4cCI6MTc5MzUyODY3NH0.pnXtzRtWrPGTWd_Ixvzx51z1-P5LMtXzyd_61I-hFmM
-
-// id event: a889eec8-4ceb-44c1-9474-df6479270708

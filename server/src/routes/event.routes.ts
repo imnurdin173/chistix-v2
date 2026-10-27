@@ -10,7 +10,7 @@ router.get("/", getEventsHandler);
 router.get("/:id", getEventDetailHandler);
 router.post("/:id/ticket-types", verifyToken, requireOrganizer, createTicketTypeHandler);
 
-router.get("/:id/ticket-types", verifyToken, requireOrganizer, requireOrganizer, getEventTicketTypesHandler);
+router.get("/:id/ticket-types", verifyToken, requireOrganizer, getEventTicketTypesHandler);
 router.put("/:id/ticket-types/:ticketTypeId", verifyToken, requireOrganizer, updateTicketTypeHandler);
 router.delete("/:id/ticket-types/:ticketTypeId", verifyToken, requireOrganizer, deleteTicketTypeHandler );
 

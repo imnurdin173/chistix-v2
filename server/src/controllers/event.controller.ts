@@ -4,6 +4,7 @@ import {
   getEventParamSchema,
   getEventsQuerySchema,
   updateEventSchema,
+  eventIdOrSlugParamsSchema
 } from "../validations/event.validation";
 import {
   createEvent,
@@ -52,7 +53,7 @@ export const getEventDetailHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const { id } = getEventParamSchema.parse(req.params);
+    const { id } = eventIdOrSlugParamsSchema.parse(req.params);
     const event = await getEventDetail(id);
     return successResponse(res, 200, "Detail event succesfully taken", event);
   } catch (err) {
