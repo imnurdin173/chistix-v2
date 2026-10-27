@@ -9,6 +9,8 @@ export const env = {
   directUrl: process.env.DIRECT_URL ?? "",
   googleClientId: process.env.GOOGLE_CLIENT_ID as string,
   jwtSecret: process.env.JWT_SECRET as string,
+  midtransServerKey: process.env.MIDTRANS_SERVER_KEY!,
+  midtransClientKey: process.env.MIDTRANS_CLIENT_KEY!,
   smtpHost: process.env.SMTP_HOST as string,
   smtpPort: Number(process.env.SMTP_PORT),
   smtpUser: process.env.SMTP_USER as string,

@@ -12,6 +12,7 @@ import { AppError } from "./utils/AppError";
 import organizerRoutes from "./routes/organizer.routes";
 import { mountRouter } from './utils/routeRegistry';
 import apiIndexRouter from './routes/apiIndex.routes';
+import transactionRoutes from "./routes/transaction.routes";
 
 const app = express();
 
@@ -35,8 +36,8 @@ mountRouter(app, "/api/health", 'Sistem',healthRouter);
 mountRouter(app, "/api/auth", 'Authentikasi', authRouter);
 mountRouter(app, "/api/events", 'Event', eventRoutes);
 mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
-mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
-
+// mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
+mountRouter(app, '/api/transactions', 'Transaksi', transactionRoutes);
 
 //---------------------- batas error :v
 
