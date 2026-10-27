@@ -4,10 +4,12 @@ import { env } from "../config/env";
 import { AppError } from "../utils/AppError";   
 import { jwt } from "zod";
 import { errorResponse } from "../utils/response";
+import { error } from "node:console";
 
 interface AuthPayload {
-    id: string;
-    role:string;
+  id: string;
+  role:string;
+  email: string;
 }
 
 declare global {
@@ -39,4 +41,15 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
   } catch {
     return errorResponse(res, 401, "Token tidak valid atau sudah kedaluwarsa");
   }
+};
+
+export const authorize = (...roles: string[]) =>
+(req: Request, res: Response, next:NextFunction) => {
+  if(!req.user) {
+    return errorResponse(res, 401, "authorize, Please login  heula atuh");
+  }
+  if(!roles.includes(req.user.role)) {
+    return errorResponse(res, 403, "mundur wir, You don't have akses ke sumber ini bro");
+  }
+  next();
 };

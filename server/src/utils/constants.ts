@@ -1,0 +1,1 @@
+export const PAYMENT_DEADLINE_MINUTES = 10;
