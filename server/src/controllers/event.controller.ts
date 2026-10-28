@@ -66,7 +66,7 @@ export const getEventDetailHandler = async (
   try {
     const { id } = eventIdOrSlugParamsSchema.parse(req.params);
     const event = await getEventDetail(id);
-    return successResponse(res, 200, "Detail event succesfully taken", event);
+    return successResponse(res, 200, "Detail event succesfully fetched /get", event);
   } catch (err) {
     next(err);
   }

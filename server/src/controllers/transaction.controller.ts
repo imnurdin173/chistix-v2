@@ -65,7 +65,7 @@ export const listMyTransactionsHandler = async (
     return successResponse(
       res,
       200,
-      "Transaction list succesfully created",
+      "Transaction list succesfully fetched /get",
       data,
     );
   } catch (err) {
@@ -91,7 +91,7 @@ export const getTransactionHandler = async (
     return successResponse(
       res,
       200,
-      "Transaction sucessfully retrieved!, selamet yee",
+      "Transaction sucessfully fetched!, selamet yee",
       data,
     );
   } catch (err) {
