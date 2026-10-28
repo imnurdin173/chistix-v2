@@ -107,7 +107,7 @@ export async function createTransaction(input: createTransactionInput) {
           now.getTime() + payment_deadline_minutes * 60 * 1000,
         ),
       },
-      include: { event: true, ticketType: true },
+      include: { event: true, ticketType: true, voucher: true },
     });
 
     if(voucherId) {

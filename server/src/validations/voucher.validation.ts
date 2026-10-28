@@ -9,4 +9,11 @@ export const createVoucherSchema = z.object({
   maxUsage: z.number().int().positive().default(100),
 });
 
+export const updateVoucherSchema = createVoucherSchema.partial();
+export const voucherParamsSchema = z.object({
+  id: z.uuid(),
+  voucherId: z.uuid(),
+});
+
 export type createVoucherInput = z.infer<typeof createVoucherSchema>;
+export type updatingVoucherInput = z.infer<typeof updateVoucherSchema>;
