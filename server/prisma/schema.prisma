@@ -121,6 +121,8 @@ model Event {
   coverImages    String[] //url cloudinary
   videoUrl       String? // url cloudinary
 
+  slug            String? @unique
+
   eventStatus           EventStatus @default(DRAFT)
   scheduledPublishStart DateTime?
   scheduledPublishEnd   DateTime?

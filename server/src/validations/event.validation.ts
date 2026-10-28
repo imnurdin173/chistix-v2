@@ -62,6 +62,10 @@ export const getEventParamSchema = z.object({
     id: z.uuid({message: "ID event is not valid format"}),
 });
 
+export const eventIdOrSlugParamsSchema = z.object({
+  id: z.string().min(1),
+});
+
 export const updateEventSchema = eventBaseSchema.partial().extend({
     coverImages: z.array(z.url()).optional(),
 });

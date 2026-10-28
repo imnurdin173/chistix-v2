@@ -6,16 +6,28 @@ import type {
   getEventQuery,
 } from "../validations/event.validation";
 import { AppError } from "../utils/AppError";
+import { generateUniqueEventSlug } from "../utils/slugify";
 
-export const createEvent = async (
-  data: createEventInput,
-  organizerId: string,
-) => {
+// export const createEvent = async (
+//   data: createEventInput,
+//   organizerId: string,
+// ) => {
+//   return prisma.event.create({
+//     data: {
+//       ...data,
+//       organizerId,
+//     },
+//   });
+// };
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const createEvent = async (data: createEventInput, organizerId: string) => {
+  const slug = await generateUniqueEventSlug(data.title);
+
   return prisma.event.create({
-    data: {
-      ...data,
-      organizerId,
-    },
+    data: { ...data, slug, organizerId },
   });
 };
 
@@ -60,12 +72,23 @@ export const getPublishedEvents = async (query: getEventQuery) => {
 };
 
 export const getEventDetail = async (id: string) => {
+  // const event = await prisma.event.findFirst({
+  //   where: {
+  //     id,
+  //     deletedAt: null,
+  //     eventStatus: "PUBLISHED",
+  //   },
+  //   include: {
+  //     ticketTypes: {
+  //       where: { deletedAt: null },
+  //       orderBy: { priceNormal: "asc" },
+  //     },
+  //     organizer: { select: { id: true, name: true } },
+  //   },
+  // });
+
   const event = await prisma.event.findFirst({
-    where: {
-      id,
-      deletedAt: null,
-      eventStatus: "PUBLISHED",
-    },
+    where: UUID_REGEX.test(id) ? { id } : { slug: id },
     include: {
       ticketTypes: {
         where: { deletedAt: null },
@@ -137,14 +160,14 @@ export const updateMyEvent = async (
 };
 
 export const deleteMyEvent = async (organizerId: string, eventId: string) => {
-    const existing= await prisma.event.findFirst({
-        where: {id: eventId, organizerId, deletedAt:null}
-    });
-    if(!existing) {
-        throw new AppError("Event not Found", 404);
-    }
-    return prisma.event.update({
-        where: {id: existing.id},
-        data: {deletedAt: new Date()}
-    });
+  const existing = await prisma.event.findFirst({
+    where: { id: eventId, organizerId, deletedAt: null },
+  });
+  if (!existing) {
+    throw new AppError("Event not Found", 404);
+  }
+  return prisma.event.update({
+    where: { id: existing.id },
+    data: { deletedAt: new Date() },
+  });
 };

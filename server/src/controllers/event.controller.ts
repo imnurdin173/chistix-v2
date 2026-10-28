@@ -4,6 +4,7 @@ import {
   getEventParamSchema,
   getEventsQuerySchema,
   updateEventSchema,
+  eventIdOrSlugParamsSchema,
 } from "../validations/event.validation";
 import {
   createEvent,
@@ -14,6 +15,8 @@ import {
   deleteMyEvent,
 } from "../services/event.service";
 import { successResponse } from "../utils/response";
+import { createVoucherSchema } from "../validations/voucher.validation";
+import { createEventVoucher } from "../services/voucher.service";
 
 export const createEventHandler = async (
   req: Request,
@@ -52,7 +55,7 @@ export const getEventDetailHandler = async (
   next: NextFunction,
 ) => {
   try {
-    const { id } = getEventParamSchema.parse(req.params);
+    const { id } = eventIdOrSlugParamsSchema.parse(req.params);
     const event = await getEventDetail(id);
     return successResponse(res, 200, "Detail event succesfully taken", event);
   } catch (err) {
@@ -80,30 +83,38 @@ export const getMyEventsHandler = async (
 };
 
 export const updateMyEventHandler = async (
-    req: Request, 
-    res: Response,
-    next:NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ) => {
-    try {
-        const {id} = getEventParamSchema.parse(req.params);
-        const data = updateEventSchema.parse(req.body);
-        const event = await updateMyEvent(req.user!.id, id, data);
-        return successResponse(res, 200, "Event sucessfully updated", event);
-    } catch (err) {
-        next(err);
-    }
+  try {
+    const { id } = getEventParamSchema.parse(req.params);
+    const data = updateEventSchema.parse(req.body);
+    const event = await updateMyEvent(req.user!.id, id, data);
+    return successResponse(res, 200, "Event sucessfully updated", event);
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const deleteMyEventHandler = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ) => {
-    try {
-    const {id} = getEventParamSchema.parse(req.params);
+  try {
+    const { id } = getEventParamSchema.parse(req.params);
     await deleteMyEvent(req.user!.id, id);
     return successResponse(res, 200, "Event deleted succesfully", null);
-} catch (err) {
+  } catch (err) {
     next(err);
-}
+  }
 };
+
+//voucher
+export async function createEventVoucherHandler(req: Request, res: Response) {
+  const { id } = getEventParamSchema.parse(req.params);
+  const body = createVoucherSchema.parse(req.body);
+  const voucher = await createEventVoucher(id, body, req.user!.id);
+  return successResponse(res, 201, "Voucher Created Successfully", voucher);
+}
