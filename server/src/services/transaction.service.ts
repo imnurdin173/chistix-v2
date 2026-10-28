@@ -1,3 +1,4 @@
+import { DiscountType } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import { PAYMENT_DEADLINE_MINUTES } from "../utils/constants";
@@ -8,6 +9,7 @@ interface createTransactionInput {
   userId: string;
   ticketTypeId: string;
   quantity: number;
+  voucherCode?: string; //tambahan voucher
 }
 
 function calculateTotalPrice(t: {
@@ -53,6 +55,40 @@ export async function createTransaction(input: createTransactionInput) {
       );
     }
 
+    let discountAmount = 0;
+    let voucherId: string | null = null;
+
+    if(input.voucherCode) {
+      const voucher = await tx.voucher.findFirst({
+        where: {code: input.voucherCode, deletedAt: null}
+      });
+      if (!voucher) {
+        throw new AppError("VOucher code is not found", 404);
+      }
+      if(voucher.eventId !== ticketType.eventId) {
+        throw new AppError("This voucher is not valid for this event", 400);
+      }
+      if (now < voucher.validStart) {
+        throw new AppError("This voucher is not active yet", 400);
+      }
+      if(now > voucher.validEnd) {
+        throw new AppError("This vooucher has expired", 400);
+      }
+
+      if (voucher.usedCount >= voucher.maxUsage) {
+        throw new AppError("This voucher quota has been used", 400);
+      } 
+
+      const subtotal = ticketType.priceNormal * input.quantity;
+
+      if(voucher.discountType === "PERCENTAGE") {
+        discountAmount = Math.floor((subtotal * voucher.discount) / 100);
+      } else {
+        discountAmount = Math.min(voucher.discount, subtotal);
+      }
+      voucherId = voucher.id;
+    } 
+
     await tx.ticketType.update({
       where: { id: ticketType.id },
       data: { sold: { increment: input.quantity } },
@@ -65,12 +101,21 @@ export async function createTransaction(input: createTransactionInput) {
         ticketTypeId: ticketType.id,
         quantity: input.quantity,
         priceAtPurchase: ticketType.priceNormal,
+        discountAmount,
+        voucherId,
         paymentDeadline: new Date(
           now.getTime() + payment_deadline_minutes * 60 * 1000,
         ),
       },
       include: { event: true, ticketType: true },
     });
+
+    if(voucherId) {
+      await tx.voucher.update({
+        where: {id: voucherId},
+        data: {usedCount: {increment: 1}}
+      });
+    }
 
     return {
       ...transaction,

@@ -4,7 +4,8 @@ export const createTransactionSchema = z.object({
     quantity:z
     .number()
     .int('quantity must be number int')
-    .min(1, 'Minimum buy 1 ticket')
+    .min(1, 'Minimum buy 1 ticket'),
+    voucherCode: z.string().trim().min(1).max(50).optional(),
 });
 
 export const listTransactionsQuerySchema = z.object({
