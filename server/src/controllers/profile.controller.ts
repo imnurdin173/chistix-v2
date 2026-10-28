@@ -19,3 +19,8 @@ export const changePasswordHandler = async (req: Request, res: Response) => {
     await profileService.changeMyPassword(req.user!.id, body);
     return successResponse(res, 200, "Password updated Succesfully");
 }
+
+export const deleteAccountHandler = async (req:Request, res: Response) => {
+    await profileService.deleteMyAccount(req.user!.id);
+    return successResponse(res, 200, "Account succesfully DELETED");
+}
