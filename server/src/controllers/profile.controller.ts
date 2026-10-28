@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { successResponse } from "../utils/response";
 import * as profileService from "../services/profile.service";
-import { updateProfileSchema } from "../validations/profile.validation";
+import { changePasswordSchema, updateProfileSchema } from "../validations/profile.validation";
 
 export const getProfileMeHandler = async (req: Request, res: Response) => {
     const user = await profileService.getMyProfile(req.user!.id);
@@ -13,3 +13,9 @@ export const updateProfileMeHandler = async (req: Request, res: Response) => {
     const user = await profileService.updateMyProfile(req.user!.id, body);
     return successResponse(res, 200, "Profile updated succesfully", user);
 };
+
+export const changePasswordHandler = async (req: Request, res: Response) => {
+    const body = changePasswordSchema.parse(req.body);
+    await profileService.changeMyPassword(req.user!.id, body);
+    return successResponse(res, 200, "Password updated Succesfully");
+}
