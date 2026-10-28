@@ -10,6 +10,7 @@ interface createTransactionInput {
   ticketTypeId: string;
   quantity: number;
   voucherCode?: string; //tambahan voucher
+  couponAmount?: number;
 }
 
 function calculateTotalPrice(t: {
@@ -103,6 +104,7 @@ export async function createTransaction(input: createTransactionInput) {
         priceAtPurchase: ticketType.priceNormal,
         discountAmount,
         voucherId,
+        couponAmount: input.couponAmount,
         paymentDeadline: new Date(
           now.getTime() + payment_deadline_minutes * 60 * 1000,
         ),

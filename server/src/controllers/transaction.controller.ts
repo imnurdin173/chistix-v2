@@ -22,7 +22,8 @@ export const createTransactionHandler = async (
       userId,
       ticketTypeId: body.ticketTypeId,
       quantity: body.quantity,
-      voucherCode: body.voucherCode
+      voucherCode: body.voucherCode,
+      couponAmount: body.couponAmount
     });
 
     const grossAmount =
