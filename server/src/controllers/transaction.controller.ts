@@ -15,6 +15,7 @@ export const createTransactionHandler = async (
   next: NextFunction,
 ) => {
   try {
+    // console.log("RAW body:", req.body);
     const body = createTransactionSchema.parse(req.body);
     const userId = (req as any).user.id;
 
@@ -23,12 +24,15 @@ export const createTransactionHandler = async (
       ticketTypeId: body.ticketTypeId,
       quantity: body.quantity,
       voucherCode: body.voucherCode,
-      couponAmount: body.couponAmount
+      couponAmount: body.couponAmount,
+      pointsUsed: body.pointsUsed
     });
 
-    const grossAmount =
-      transaction.quantity * transaction.priceAtPurchase -
-      transaction.discountAmount;
+    // const grossAmount =
+    //   transaction.quantity * transaction.priceAtPurchase -
+    //   transaction.discountAmount;
+
+    const grossAmount = transaction.totalPrice;
 
     const snap = await createSnapTransaction({
       orderId: transaction.id,

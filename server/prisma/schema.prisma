@@ -211,6 +211,7 @@ model Transaction {
   quantity        Int
   priceAtPurchase Int
   couponAmount    Int               @default(0)
+  pointsUsed      Int               @default(0)
   discountAmount  Int               @default(0)
   paymentDeadline DateTime
   paidAt          DateTime?
