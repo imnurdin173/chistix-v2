@@ -1,69 +1,218 @@
-import Image from "next/image";
+import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import type { EventListItem, EventsResponse } from "@/types/event";
 
-export default function Home() {
+// Dinding #2 kemarin: halaman ini sengaja blocking (daftar event harus selalu segar)
+export const instant = false;
+
+/* ---------- helper format (dummy: tinggal di sini dulu, pindah ke lib/format.ts saat dipakai >1 file) ---------- */
+
+function formatRupiah(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatTanggal(iso: string): string {
+  return new Date(iso).toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function rentangTanggal(mulai: string, selesai: string): string {
+  const a = formatTanggal(mulai);
+  const b = formatTanggal(selesai);
+  return a === b ? a : `${a} - ${b}`;
+}
+
+function potongTeks(teks: string, max: number): string {
+  return teks.length > max ? `${teks.slice(0, max)}...` : teks;
+}
+
+/* ---------- pola baru: hasil sukses/gagal (discriminated union) ---------- */
+
+type HomeResult =
+  | { ok: true; data: EventsResponse }
+  | { ok: false; message: string };
+
+async function loadEvents(): Promise<HomeResult> {
+  try {
+    const data = await apiFetch<EventsResponse>("/events");
+    return { ok: true, data };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Gagal memuat event",
+    };
+  }
+}
+
+/* ---------- kartu event ---------- */
+
+function EventCard({ event }: { event: EventListItem }) {
+  // "Mulai dari" = tiket termurah. Pakai reduce (bukan Math.min) karena
+  // kita butuh OBJEK tiketnya, bukan cuma angkanya — untuk priceAnchor.
+  const termurah =
+    event.ticketTypes.length > 0
+      ? event.ticketTypes.reduce((min, t) =>
+          t.priceNormal < min.priceNormal ? t : min,
+        )
+      : null;
+
+  const totalQuota = event.ticketTypes.reduce((sum, t) => sum + t.quota, 0);
+  const totalSold = event.ticketTypes.reduce((sum, t) => sum + t.sold, 0);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {event.thumbnailImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={event.thumbnailImage}
+          alt={event.title}
+          className="h-44 w-full object-cover"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+      ) : (
+        <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 text-sm text-gray-500">
+          Tidak ada gambar
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+            {event.category}
+          </span>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            {event.eventStatus}
+          </span>
+        </div>
+
+        <div>
+          <h2 className="line-clamp-2 text-base font-semibold text-gray-900">
+            {event.title}
+          </h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            oleh {event.organizer.name}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {event.description && (
+          <p className="text-sm text-gray-600">{potongTeks(event.description, 100)}</p>
+        )}
+
+        <div className="space-y-1 text-sm text-gray-600">
+          <p>{rentangTanggal(event.eventStartDate, event.eventEndDate)}</p>
+          <p>
+            {event.cityName}, {event.provinceName}
+          </p>
+          {event.venueAddress && (
+            <p className="text-xs text-gray-400">{potongTeks(event.venueAddress, 80)}</p>
+          )}
+        </div>
+
+        {termurah && (
+          <div>
+            <p className="text-xs text-gray-500">Mulai dari</p>
+            <p className="text-lg font-bold text-gray-900">
+              {formatRupiah(termurah.priceNormal)}
+              {termurah.priceAnchor != null &&
+                termurah.priceAnchor > termurah.priceNormal && (
+                  <span className="ml-2 text-sm font-normal text-gray-400 line-through">
+                    {formatRupiah(termurah.priceAnchor)}
+                  </span>
+                )}
+            </p>
+          </div>
+        )}
+
+        {event.ticketTypes.length > 0 && (
+          <ul className="space-y-1 rounded-lg bg-gray-50 p-2 text-xs text-gray-600">
+            {event.ticketTypes.map((t) => (
+              <li key={t.id} className="flex justify-between">
+                <span>{t.name}</span>
+                <span>
+                  {formatRupiah(t.priceNormal)} - sisa {t.quota - t.sold}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="text-xs text-gray-500">
+          Sisa total: {totalQuota - totalSold} dari {totalQuota} tiket
+        </p>
+
+        <div className="mt-auto">
+          <Link
+            href={`/events/${event.slug}`}
+            className="block rounded-xl bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-700"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Lihat detail
+          </Link>
+        </div>
+
+        {/* Mata-mata data: bukti "semua data dari database" — termasuk field yang tidak kita type.
+            Dihapus saat polish nanti. */}
+        <details className="rounded-lg border border-dashed border-gray-300 p-2">
+          <summary className="cursor-pointer text-xs text-gray-500">
+            Data mentah dari API (JSON)
+          </summary>
+          <pre className="mt-2 max-h-64 overflow-auto text-[10px] leading-relaxed text-gray-600">
+            {JSON.stringify(event, null, 2)}
+          </pre>
+        </details>
+      </div>
+    </article>
+  );
+}
+
+/* ---------- page utama ---------- */
+
+export default async function HomePage() {
+  const result = await loadEvents();
+
+  if (!result.ok) {
+    return (
+      <main className="mx-auto max-w-5xl p-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <h1 className="text-lg font-semibold text-red-700">Gagal memuat event</h1>
+          <p className="mt-1 text-sm text-red-600">{result.message}</p>
+          <p className="mt-3 text-xs text-red-500">
+            Cek: backend hidup? API_URL sudah menunjuk ke port yang benar?
+          </p>
         </div>
       </main>
-    </div>
+    );
+  }
+
+  const { events, pagination } = result.data;
+
+  return (
+    <main className="mx-auto max-w-6xl p-8">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Chistix - Homepage (dummy TEST INTEGRATION)</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          {events.length} event ditampilkan - total {pagination.total} event -
+          halaman {pagination.page} dari {pagination.totalPages}
+        </p>
+      </header>
+
+      {events.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
+          Belum ada event di database.
+        </div>
+      ) : (
+        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {events.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))}
+        </section>
+      )}
+    </main>
   );
 }

@@ -1,0 +1,1 @@
+//tempat customer melihat detail event dan targetnya pindah ke cart
