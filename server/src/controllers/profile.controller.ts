@@ -21,6 +21,6 @@ export const changePasswordHandler = async (req: Request, res: Response) => {
 }
 
 export const deleteAccountHandler = async (req:Request, res: Response) => {
-    await profileService.deleteMyAccount(req.user!.id);
+    await profileService.deletingMyAccount(req.user!.id);
     return successResponse(res, 200, "Account succesfully DELETED");
 }

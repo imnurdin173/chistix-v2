@@ -53,24 +53,25 @@ enum TransactionStatus {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  name          String
-  email         String         @unique
-  password      String?
+  id                  String               @id @default(uuid())
+  name                String
+  email               String               @unique
+  password            String?
   //googleId              String?         @unique
-  avatar        String?
-  emailVerified Boolean        @default(false)
-  role          Role           @default(CUSTOMER)
-  referralCode  String         @unique
-  points        Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @default(now()) @updatedAt
-  deletedAt     DateTime?
-  accounts      Account[]
-  events        Event[]
-  transactions  Transaction[]
-  reviews       Review[]
-  verifications Verification[]
+  avatar              String?
+  emailVerified       Boolean              @default(false)
+  role                Role                 @default(CUSTOMER)
+  referralCode        String               @unique
+  points              Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @default(now()) @updatedAt
+  deletedAt           DateTime?
+  accounts            Account[]
+  events              Event[]
+  transactions        Transaction[]
+  reviews             Review[]
+  verifications       Verification[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("user")
 }
@@ -103,6 +104,18 @@ model Verification {
   @@map("verification")
 }
 
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String @unique
+  expiredAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("passwordResetToken")
+}
+
 model Event {
   id             String        @id @default(uuid())
   organizerId    String
@@ -121,7 +134,7 @@ model Event {
   coverImages    String[] //url cloudinary
   videoUrl       String? // url cloudinary
 
-  slug            String? @unique
+  slug String? @unique
 
   eventStatus           EventStatus @default(DRAFT)
   scheduledPublishStart DateTime?
@@ -200,9 +213,9 @@ model Transaction {
   paidAt          DateTime?
   voucherId       String?
   voucher         Voucher?          @relation(fields: [voucherId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
 
   tickets Tickets[]
 

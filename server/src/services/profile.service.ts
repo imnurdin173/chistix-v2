@@ -88,3 +88,17 @@ export async function changeMyPassword(
     data: { password: newPasswordHash },
   });
 }
+
+export async function deletingMyAccount(userId:string) {
+  const user = await prisma.user.findUnique({
+    where: {id: userId, deletedAt:null },
+  });
+  if(!user) {
+    throw new AppError("User Not Found",404);
+  }
+
+  await prisma.user.update({
+    where: {id: userId},
+    data: {deletedAt: new Date()}
+  });
+}

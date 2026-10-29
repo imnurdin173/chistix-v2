@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
@@ -211,4 +211,66 @@ export const resendVerificationEmail = async (email: string) => {
   const token = await createVerificationToken(user.id);
   const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
   await sendMail(user.email, "Verif Email Chistix", "verifyEmail", {name:user.name, link});
+}
+
+export async function requestPasswordReset(email: string) {
+  const user = await prisma.user.findFirst({
+    where: { email, deletedAt: null },
+  });
+
+  // Skip diam: email tak terdaftar / akun Google (password null) → tanpa jejak
+  if (user && user.password) {
+    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiredAt: new Date(Date.now() + 60 * 60 * 1000), // 60 menit
+      },
+    });
+
+    const link = `${env.appUrl}/reset-password?token=${rawToken}`;
+
+    try {
+      await sendMail(user.email, "Reset Password Chistix", "resetPassword", {
+        name: user.name,
+        link,
+      });
+    } catch (err) {
+      console.error("Failed to send reset email, but request still success: ", err);
+    }
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  if (!record) {
+    throw new AppError("Invalid or expired reset token",400);
+  }
+  if (record.usedAt) {
+    throw new AppError("Reset token has already been used",400);
+  }
+  if (record.expiredAt < new Date()) {
+    throw new AppError("Reset token has expired",400);
+  }
+
+  const user = await prisma.user.findFirst({
+    where: { id: record.userId, deletedAt: null },
+  });
+  if (!user) {
+    throw new AppError("User not found",404);
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: user.id }, data: { password: newPasswordHash } }),
+    prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+  ]);
 }

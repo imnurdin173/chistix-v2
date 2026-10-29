@@ -41,7 +41,7 @@ mountRouter(app, "/api/events", 'Event', eventRoutes);
 mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
 // mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
 mountRouter(app, '/api/transactions', 'Transaksi', transactionRoutes);
-mountRouter(app, "/api/payments","Pembayaran",paymentRouter);
+mountRouter(app, "/api/payments","Pembayaran:Midtrans",paymentRouter);
 
 
 //---------------------- batas error :v
