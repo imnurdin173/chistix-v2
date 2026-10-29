@@ -2,14 +2,18 @@ import { DiscountType } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import { PAYMENT_DEADLINE_MINUTES } from "../utils/constants";
+import { POINT_TO_RUPIAH } from "../utils/constants";
 
 const payment_deadline_minutes = PAYMENT_DEADLINE_MINUTES;
+// const POINT_TO_RUPIAH = 100; //penentu 1 poin = 100 rupiah
 
 interface createTransactionInput {
   userId: string;
   ticketTypeId: string;
   quantity: number;
   voucherCode?: string; //tambahan voucher
+  couponAmount?: number;
+  pointsUsed?: number;
 }
 
 function calculateTotalPrice(t: {
@@ -89,6 +93,42 @@ export async function createTransaction(input: createTransactionInput) {
       voucherId = voucher.id;
     } 
 
+    const subtotal = ticketType.priceNormal * input.quantity;
+    const priceAfterVoucher = subtotal - discountAmount;
+
+    const pointsUsed = input.pointsUsed ?? 0;
+    let pointDiscountAmount = 0;
+
+    if(pointsUsed > 0) {
+      const user = await tx.user.findUnique({
+        where: {id: input.userId},
+        select: {points: true}
+      });
+
+      if (!user) {
+        throw new AppError("User is not found", 404);
+      }
+
+      if(pointsUsed > user.points) {
+        throw new AppError(
+          `Point cekak, you only have ${user.points} points`, 400);
+      }
+
+      pointDiscountAmount = pointsUsed * POINT_TO_RUPIAH;
+
+      if(pointDiscountAmount > priceAfterVoucher) {
+        throw new AppError("Points discount cannot exceed the total price",400);
+      }
+
+      const deductedPoin = await tx.user.updateMany({
+        where: {id: input.userId, points: {gte: pointsUsed}},
+        data: {points: {decrement: pointsUsed}},
+      });
+      if(deductedPoin.count === 0) {
+        throw new AppError("Points Cekak", 400);
+      }
+    }
+
     await tx.ticketType.update({
       where: { id: ticketType.id },
       data: { sold: { increment: input.quantity } },
@@ -103,6 +143,8 @@ export async function createTransaction(input: createTransactionInput) {
         priceAtPurchase: ticketType.priceNormal,
         discountAmount,
         voucherId,
+        couponAmount: input.couponAmount,
+        pointsUsed: input.pointsUsed,
         paymentDeadline: new Date(
           now.getTime() + payment_deadline_minutes * 60 * 1000,
         ),
@@ -121,7 +163,7 @@ export async function createTransaction(input: createTransactionInput) {
       ...transaction,
       totalPrice:
         transaction.quantity * transaction.priceAtPurchase -
-        transaction.discountAmount,
+        transaction.discountAmount - pointDiscountAmount,
     };
   });
 }
@@ -235,3 +277,4 @@ export async function cancelTransaction(userId: string, transactionId: string) {
   });
   return getTransactionDetail(userId, cancelled.id);
 }
+

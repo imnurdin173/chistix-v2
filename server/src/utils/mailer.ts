@@ -26,3 +26,15 @@ export const sendMail = async (to:string, subject:string, templateName: string, 
         html
     });
 };
+
+// export const sendPasswordResetEmail = async (to:string, subject:string, templateName: string, context: Record<string, unknown>) => {
+//   const resetUrl = `${env.appUrl}/reset-password?token=${rawToken}`;
+//   const html = Handlebars.compile(resetUrl)(context);
+//   await transporter.sendMail({
+//     from: `"Chistix" <${env.smtpUser}>`,
+//     to,
+//     subject: "Reset Your Password - Chistix",
+//     html: "resetPassword",
+//     context: { name, resetUrl, expiresInMinutes: 60 },
+//   });
+// }

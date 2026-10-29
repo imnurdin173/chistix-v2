@@ -6,7 +6,9 @@ import {
   getMyProfile,
   toPublicUser,
   verifyUserEmail,
-  resendVerificationEmail
+  resendVerificationEmail,
+  requestPasswordReset,
+  resetPassword
 } from "../services/auth.service";
 import { successResponse } from "../utils/response";
 import {
@@ -14,6 +16,8 @@ import {
   loginSchema,
   googleLoginSchema,
   resendSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema
 } from "../validations/auth.validation";
 import { AppError } from "../utils/AppError";
 import { errorResponse } from "../utils/response";
@@ -96,6 +100,37 @@ export const verifyEmailHandler = async (req:Request, res: Response, next:NextFu
     }
 };
 
+
+
+export const resendVerificationHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {email} = resendSchema.parse(req.body);
+        await resendVerificationEmail(email);
+        return successResponse(res, 200, "Check your inbox, new verif link has been sent. (only if your email has registered but not verrified yes)");
+    } catch (err) {
+        next(err);
+    }
+};
+export const forgotPasswordHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    await requestPasswordReset(email);
+    return successResponse(res, 200, "If the email is registered, a password reset link has been sent");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPasswordHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+    await resetPassword(token, newPassword);
+    return successResponse(res, 200, "Password has been reset successfully");
+  } catch (err) {
+    next(err);
+  }
+};
+
 // export const testEmailHandler = async (req: Request, res: Response, next: NextFunction) => {
 //   try {
 //     await sendMail(
@@ -112,14 +147,3 @@ export const verifyEmailHandler = async (req:Request, res: Response, next:NextFu
 //     next(err);
 //   }
 // };
-
-export const resendVerificationHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const {email} = resendSchema.parse(req.body);
-        await resendVerificationEmail(email);
-        return successResponse(res, 200, "Check your inbox, new verif link has been sent. (only if your email has registered but not verrified yes)");
-    } catch (err) {
-        next(err);
-    }
-};
-

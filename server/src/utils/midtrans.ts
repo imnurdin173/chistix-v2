@@ -46,7 +46,7 @@ export async function createSnapTransaction(
   if (!response.ok) {
     const body = await response.text();
     throw new AppError(
-      "Amsyong brader, Midtrans Reject Payment session: ${body}",
+      `Amsyong brader, Midtrans Reject Payment session: ${body}`,
       502,
     );
   }

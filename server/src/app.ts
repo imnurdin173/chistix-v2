@@ -14,6 +14,7 @@ import { mountRouter } from './utils/routeRegistry';
 import apiIndexRouter from './routes/apiIndex.routes';
 import transactionRoutes from "./routes/transaction.routes";
 import paymentRouter from "./routes/payment.routes";
+import profileRouter from "./routes/profile.routes";
 
 const app = express();
 
@@ -35,11 +36,12 @@ mountRouter(app, '/', 'Katalog API', apiIndexRouter);
 mountRouter(app, '/api', 'Katalog API', apiIndexRouter);
 mountRouter(app, "/api/health", 'Sistem',healthRouter);
 mountRouter(app, "/api/auth", 'Authentikasi', authRouter);
+mountRouter(app, "/api/profile", 'Profile data', profileRouter);
 mountRouter(app, "/api/events", 'Event', eventRoutes);
 mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
 // mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
 mountRouter(app, '/api/transactions', 'Transaksi', transactionRoutes);
-mountRouter(app, "/api/payments","Pembayaran",paymentRouter);
+mountRouter(app, "/api/payments","Pembayaran:Midtrans",paymentRouter);
 
 
 //---------------------- batas error :v
