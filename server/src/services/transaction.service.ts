@@ -2,9 +2,10 @@ import { DiscountType } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import { PAYMENT_DEADLINE_MINUTES } from "../utils/constants";
+import { POINT_TO_RUPIAH } from "../utils/constants";
 
 const payment_deadline_minutes = PAYMENT_DEADLINE_MINUTES;
-const POINT_TO_RUPIAH = 100; //penentu 1 poin = 100 rupiah
+// const POINT_TO_RUPIAH = 100; //penentu 1 poin = 100 rupiah
 
 interface createTransactionInput {
   userId: string;

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import { env } from "../config/env";
+import { POINT_TO_RUPIAH } from "../utils/constants";
 
 interface MidtransNotification {
   order_id: string;
@@ -35,7 +36,16 @@ export async function handlePaymentNotification(payload: MidtransNotification) {
   });
 
   if (!transaction) {
-    throw new AppError("Order not know", 404);
+    throw new AppError("Order not found", 404);
+  }
+
+  const expectedTotal =
+    transaction.quantity * transaction.priceAtPurchase -
+    transaction.discountAmount -
+    transaction.pointsUsed * POINT_TO_RUPIAH;
+
+  if (Number(payload.gross_amount) !== expectedTotal) {
+    throw new AppError("Amount does not match this order", 400);
   }
 
   if (transaction.status === "PAID") {
@@ -45,25 +55,36 @@ export async function handlePaymentNotification(payload: MidtransNotification) {
   switch (payload.transaction_status) {
     case "settlement":
     case "capture": {
-      const updated = await prisma.transaction.update({
-        where: { id: transaction.id },
+      const paid = await prisma.transaction.updateMany({
+        where: { id: transaction.id, status: "WAITING_PAYMENT" },
         data: { status: "PAID", paidAt: new Date() },
       });
+      if (paid.count === 0) {
+        return { message: "Has Paid before" };
+      }
       return {
-        message: "Payment has been Confirmed, selamat yee",
-        status: updated.status,
+        message: "Payment has been Confirmed,",
+        status: "PAID", // updateMany balikin count, bukan row — makanya literal
       };
+      // const updated = await prisma.transaction.update({
+      //   where: { id: transaction.id },
+      //   data: { status: "PAID", paidAt: new Date() },
+      // });
+      // return {
+      //   message: "Payment has been Confirmed, selamat yee",
+      //   status: updated.status,
+      // };
     }
     case "deny":
     case "cancel":
-      await prisma.transaction.update({
-        where: { id: transaction.id },
+      await prisma.transaction.updateMany({
+        where: { id: transaction.id, status: "WAITING_PAYMENT" },
         data: { status: "CANCELLED" },
       });
       return { message: "Payment rejected, kacian harus debug" };
     case "expire":
-      await prisma.transaction.update({
-        where: { id: transaction.id },
+      await prisma.transaction.updateMany({
+        where: { id: transaction.id, status: "WAITING_PAYMENT" },
         data: { status: "EXPIRED" },
       });
       return { message: "Payment Expired, udah busuk" };
