@@ -13,6 +13,35 @@ interface MidtransNotification {
   fraud_status?: string;
 }
 
+async function closeAndRestore(
+  transaction: {
+    id: string;
+    ticketTypeId: string;
+    quantity: number;
+    voucherId: string | null;
+  },
+  status: "CANCELLED" | "EXPIRED",
+) {
+  await prisma.$transaction(async (tx) => {
+    const gate = await tx.transaction.updateMany({
+      where: { id: transaction.id, status: "WAITING_PAYMENT" },
+      data: { status },
+    });
+    if (gate.count === 0) return; // pintu sudah ditutup pihak lain — webhook diam saja, bukan error
+
+    await tx.ticketType.update({
+      where: { id: transaction.ticketTypeId },
+      data: { sold: { decrement: transaction.quantity } },
+    });
+    if (transaction.voucherId) {
+      await tx.voucher.update({
+        where: { id: transaction.voucherId },
+        data: { usedCount: { decrement: 1 } },
+      });
+    }
+  });
+}
+
 export async function handlePaymentNotification(payload: MidtransNotification) {
   const expected = crypto
     .createHash("sha512")
@@ -77,18 +106,25 @@ export async function handlePaymentNotification(payload: MidtransNotification) {
     }
     case "deny":
     case "cancel":
-      await prisma.transaction.updateMany({
-        where: { id: transaction.id, status: "WAITING_PAYMENT" },
-        data: { status: "CANCELLED" },
-      });
+      await closeAndRestore(transaction, "CANCELLED");
       return { message: "Payment rejected, kacian harus debug" };
     case "expire":
-      await prisma.transaction.updateMany({
-        where: { id: transaction.id, status: "WAITING_PAYMENT" },
-        data: { status: "EXPIRED" },
-      });
+      await closeAndRestore(transaction, "EXPIRED");
       return { message: "Payment Expired, udah busuk" };
-    default:
-      return { message: "Payment still Pending, Sabar wak" };
+    // case "deny":
+    // case "cancel":
+    //   await prisma.transaction.updateMany({
+    //     where: { id: transaction.id, status: "WAITING_PAYMENT" },
+    //     data: { status: "CANCELLED" },
+    //   });
+    //   return { message: "Payment rejected, kacian harus debug" };
+    // case "expire":
+    //   await prisma.transaction.updateMany({
+    //     where: { id: transaction.id, status: "WAITING_PAYMENT" },
+    //     data: { status: "EXPIRED" },
+    //   });
+    //   return { message: "Payment Expired, udah busuk" };
+    // default:
+    //   return { message: "Payment still Pending, Sabar wak" };
   }
 }

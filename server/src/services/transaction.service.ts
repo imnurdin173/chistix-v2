@@ -228,6 +228,7 @@ export async function getTransactionDetail(
     throw new AppError("You no no no access to this transaction", 403);
   }
   return { ...transaction, totalPrice: calculateTotalPrice(transaction) };
+
 }
 
 export async function cancelTransaction(userId: string, transactionId: string) {
@@ -235,7 +236,6 @@ export async function cancelTransaction(userId: string, transactionId: string) {
     where: { id: transactionId },
   });
 
-  
   if (!transaction) {
     throw new AppError("Transaction  not found /cancel", 404);
   }
@@ -244,25 +244,38 @@ export async function cancelTransaction(userId: string, transactionId: string) {
     throw new AppError("U don't have access to this transaction /cancel", 403);
   }
 
+  const alasan: Record<string, string> = {          // ← pindah keluar, dipakai 2 tempat
+    PAID: "Cannot cancel order, payment has been received (jalur refund)",
+    CANCELLED: "Cannot cancel order, transaction has been cancel before",
+    EXPIRED: "Cannot cancel order, Transaction has been Expired",
+  };
+
   if (transaction.status !== "WAITING_PAYMENT") {
-    const alasan: Record<string, string> = {
-      PAID: "Cannot cancel order, payment has been received (jalur refund)",
-      CANCELLED: "Cannot cancel order, transaction has been cancel before",
-      EXPIRED: "Cannot cancel order, Transaction has been Expired",
-    };
     throw new AppError(
-      alasan[transaction.status] ??
-        `Transaction status is ${transaction.status}`,409
+      alasan[transaction.status] ?? `Transaction status is ${transaction.status}`,
+      409,
     );
   }
 
-  const cancelled = await prisma.$transaction(async (tx) => {
-    const updated = await tx.transaction.update({
-      where: { id: transactionId },
+  await prisma.$transaction(async (tx) => {
+    const gate = await tx.transaction.updateMany({          // ← pintu: DB yang memutuskan
+      where: { id: transactionId, status: "WAITING_PAYMENT" },
       data: { status: "CANCELLED" },
     });
 
-    await tx.ticketType.update({
+    if (gate.count === 0) {
+      // kalah balapan (cancel dobel / webhook lebih dulu) — pesan jujur sesuai status terkini
+      const now = await tx.transaction.findUnique({
+        where: { id: transactionId },
+        select: { status: true },
+      });
+      throw new AppError(
+        alasan[now?.status ?? ""] ?? `Transaction status is ${now?.status}`,
+        409,
+      );
+    }
+
+    await tx.ticketType.update({                            // ← restore: TIDAK berubah
       where: { id: transaction.ticketTypeId },
       data: { sold: { decrement: transaction.quantity } },
     });
@@ -273,8 +286,56 @@ export async function cancelTransaction(userId: string, transactionId: string) {
         data: { usedCount: { decrement: 1 } },
       });
     }
-    return updated;
   });
-  return getTransactionDetail(userId, cancelled.id);
+
+  return getTransactionDetail(userId, transactionId);  // ← updateMany tak balikin row, pakai transactionId
 }
+
+// export async function cancelTransaction(userId: string, transactionId: string) {
+//   const transaction = await prisma.transaction.findUnique({
+//     where: { id: transactionId },
+//   });
+
+  
+//   if (!transaction) {
+//     throw new AppError("Transaction  not found /cancel", 404);
+//   }
+
+//   if (transaction.userId !== userId) {
+//     throw new AppError("U don't have access to this transaction /cancel", 403);
+//   }
+
+//   if (transaction.status !== "WAITING_PAYMENT") {
+//     const alasan: Record<string, string> = {
+//       PAID: "Cannot cancel order, payment has been received (jalur refund)",
+//       CANCELLED: "Cannot cancel order, transaction has been cancel before",
+//       EXPIRED: "Cannot cancel order, Transaction has been Expired",
+//     };
+//     throw new AppError(
+//       alasan[transaction.status] ??
+//         `Transaction status is ${transaction.status}`,409
+//     );
+//   }
+
+//   const cancelled = await prisma.$transaction(async (tx) => {
+//     const updated = await tx.transaction.update({
+//       where: { id: transactionId },
+//       data: { status: "CANCELLED" },
+//     });
+
+//     await tx.ticketType.update({
+//       where: { id: transaction.ticketTypeId },
+//       data: { sold: { decrement: transaction.quantity } },
+//     });
+
+//     if (transaction.voucherId) {
+//       await tx.voucher.update({
+//         where: { id: transaction.voucherId },
+//         data: { usedCount: { decrement: 1 } },
+//       });
+//     }
+//     return updated;
+//   });
+//   return getTransactionDetail(userId, cancelled.id);
+// }
 
