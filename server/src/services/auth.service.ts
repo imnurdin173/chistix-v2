@@ -36,6 +36,10 @@ function signToken(payload: { id: string; role: string }): string {
   return jwt.sign(payload, env.jwtSecret, { expiresIn: "7d" });
 }
 
+const REFERRAL_POINTS_INVITER = 10;
+const REFERRAL_POINTS_REFEREE = 5;
+
+
 export async function registerUser(input: RegisterInput) {
   const existingUser = await prisma.user.findUnique({
     where: { email: input.email },
@@ -45,9 +49,7 @@ export async function registerUser(input: RegisterInput) {
   const hashedPassword = await bcrypt.hash(input.password, 10);
   // const referralCode = await generateReferralCode(input.name);
 
-  const REFERRAL_POINTS_INVITER = 10;
-  const REFERRAL_POINTS_REFEREE = 5;
-
+  
   let referrer: { id: string } | null = null;
   if (input.referralCode) {
     const owner = await prisma.user.findUnique({
@@ -79,16 +81,10 @@ export async function registerUser(input: RegisterInput) {
         role: input.role,
         referralCode: generateReferralCode(input.name),
         referredById: referrer?.id,
-        points: referrer ? REFERRAL_POINTS_REFEREE : 0,
+        points: 0,
       },
     });
 
-    if(referrer) {
-      await tx.user.update({
-        where: {id: referrer.id},
-        data: {points: {increment: REFERRAL_POINTS_INVITER }}
-      });
-    }
     return newUser;
   });
 
@@ -233,18 +229,52 @@ export const verifyUserEmail = async (token: string) => {
     throw new AppError("Token Verif not valid", 400);
   }
 
-  if (verification.expiresAt < new Date()) {
+  if (verification.expiresAt < new Date()) { 
     await prisma.verification.delete({ where: { id: verification.id } });
     throw new AppError("Token EXpired", 400);
   }
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: verification.userId },
+  // await prisma.$transaction([
+  //   prisma.user.update({
+  //     where: { id: verification.userId },
+  //     data: { emailVerified: true },
+  //   }),
+  //   prisma.verification.delete({ where: { id: verification.id } }),
+  // ]);
+
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.user.findFirst({
+      where: { id: verification.userId, deletedAt: null },
+    });
+
+    if (!existing) {
+      throw new AppError("User is not found", 404);
+    }
+
+    const claimed = await tx.user.updateMany({
+      where: { id: existing.id, emailVerified: false },
       data: { emailVerified: true },
-    }),
-    prisma.verification.delete({ where: { id: verification.id } }),
-  ]);
+    });
+
+    if (claimed.count === 0) {
+      throw new AppError("Email is already verified", 400);
+    }
+
+    if (existing.referredById) {
+      await tx.user.update({
+        where: { id: existing.id },
+        data: { points: { increment: REFERRAL_POINTS_REFEREE } },
+      });
+
+      await tx.user.update({
+        where: { id: existing.referredById },
+        data: { points: { increment: REFERRAL_POINTS_INVITER } },
+      });
+    }
+
+    await tx.verification.delete({ where: { id: verification.id } });
+  });
+
   return { message: "email verification succesful" };
 };
 
