@@ -102,3 +102,23 @@ export async function deletingMyAccount(userId:string) {
     data: {deletedAt: new Date()}
   });
 }
+
+export async function getMyReferralSummary(userId: string) {
+  const user = await prisma.user.findFirst({
+    where: {id: userId, deletedAt:null}
+  });
+
+  if(!user) {
+    throw new AppError("User Not Found", 404);
+  }
+
+  const totalReferred = await prisma.user.count({
+    where: {referredById:  userId}
+  });
+
+  return {
+    referralCode: user.referralCode,
+    points: user.points,
+    totalReferred,
+  };
+}

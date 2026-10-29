@@ -24,3 +24,8 @@ export const deleteAccountHandler = async (req:Request, res: Response) => {
     await profileService.deletingMyAccount(req.user!.id);
     return successResponse(res, 200, "Account succesfully DELETED");
 }
+
+export const getReferralSummaryHandler = async (req: Request, res: Response) => {
+    const summary = await profileService.getMyReferralSummary(req.user!.id);
+    return successResponse(res, 200, "Referral summary fetched successfully", summary);
+};
