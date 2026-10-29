@@ -5,6 +5,7 @@ export const registerSchema = z.object({
     email: z.email("Email Address is not valid"),
     password: z.string().min(6, "Password Minimum 6 Character"),
     role: z.enum(["CUSTOMER", "ORGANIZER"]).default("CUSTOMER"),
+    referralCode: z.string().trim().min(1).max(20).optional(),
 });
 
 export const loginSchema = z.object({
