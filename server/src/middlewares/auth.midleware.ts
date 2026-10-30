@@ -1,33 +1,44 @@
 import { Request, Response, NextFunction } from "express";
 import Jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { AppError } from "../utils/AppError";   
+import { AppError } from "../utils/AppError";
 import { jwt } from "zod";
 import { errorResponse } from "../utils/response";
 import { error } from "node:console";
 
 interface AuthPayload {
   id: string;
-  role:string;
+  role: string;
   email: string;
 }
 
 declare global {
-    namespace Express {
-        interface Request {
-            user?: AuthPayload;
-        }
+  namespace Express {
+    interface Request {
+      user?: AuthPayload;
     }
+  }
 }
 
-export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
+export const verifyToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const authHeader = req.headers.authorization;
+  const cookieToken = req.cookies?.token;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return errorResponse(res, 401, "Token tidak ditemukan, silakan login terlebih dahulu");
+  if (!authHeader?.startsWith("Bearer ") && !cookieToken) {
+    return errorResponse(
+      res,
+      401,
+      "Token tidak ditemukan, silakan login terlebih dahulu",
+    );
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.split(" ")[1]
+    : cookieToken;
 
   try {
     const decoded = Jwt.verify(token, env.jwtSecret) as {
@@ -43,13 +54,18 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-export const authorize = (...roles: string[]) =>
-(req: Request, res: Response, next:NextFunction) => {
-  if(!req.user) {
-    return errorResponse(res, 401, "authorize, Please login  heula atuh");
-  }
-  if(!roles.includes(req.user.role)) {
-    return errorResponse(res, 403, "mundur wir, You don't have akses ke sumber ini bro");
-  }
-  next();
-};
+export const authorize =
+  (...roles: string[]) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return errorResponse(res, 401, "authorize, Please login  heula atuh");
+    }
+    if (!roles.includes(req.user.role)) {
+      return errorResponse(
+        res,
+        403,
+        "mundur wir, You don't have akses ke sumber ini bro",
+      );
+    }
+    next();
+  };

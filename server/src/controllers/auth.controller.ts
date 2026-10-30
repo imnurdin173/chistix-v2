@@ -8,7 +8,7 @@ import {
   verifyUserEmail,
   resendVerificationEmail,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
 } from "../services/auth.service";
 import { successResponse } from "../utils/response";
 import {
@@ -17,13 +17,14 @@ import {
   googleLoginSchema,
   resendSchema,
   forgotPasswordSchema,
-  resetPasswordSchema
+  resetPasswordSchema,
 } from "../validations/auth.validation";
 import { AppError } from "../utils/AppError";
 import { errorResponse } from "../utils/response";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { sendMail } from "../utils/mailer";
+import Jwt from "jsonwebtoken";
 
 export async function registerHandler(
   req: Request,
@@ -47,6 +48,20 @@ export async function loginHandler(
   try {
     const input = loginSchema.parse(req.body);
     const result = await loginUser(input);
+
+    const decoded = Jwt.decode(result.token) as { exp?: number } | null;
+    const maxAgeMs = decoded?.exp
+      ? decoded.exp * 1000 - Date.now()
+      : 7 * 24 * 60 * 60 * 1000;
+
+    res.cookie("token", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: maxAgeMs,
+      path: "/",
+    });
+
     return successResponse(res, 200, "Login successful", result);
   } catch (err) {
     next(err);
@@ -61,67 +76,116 @@ export async function googleLoginHandler(
   try {
     const input = googleLoginSchema.parse(req.body);
     const result = await loginWithGoogle(input);
+
+    if (!result?.token) {
+      return errorResponse(res, 500, "Login Google gagal menghasilkan token");
+    }
+    
+    const decoded = Jwt.decode(result.token) as { exp?: number } | null;
+    const maxAgeMs = decoded?.exp
+      ? decoded.exp * 1000 - Date.now()
+      : 7 * 24 * 60 * 60 * 1000;
+
+    res.cookie("token", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: maxAgeMs,
+      path: "/",
+    });
+
     return successResponse(res, 200, "Login By Google successful", result);
   } catch (err) {
     next(err);
   }
 }
 
-export const meHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const meHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     if (!req.user) {
       return errorResponse(res, 401, "Silakan login terlebih dahulu");
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },    
+      where: { id: req.user.id },
     });
 
     if (!user || user.deletedAt) {
       return errorResponse(res, 404, "User tidak ditemukan");
     }
 
-    return successResponse(res, 200, "Get current user successful", toPublicUser(user));
+    return successResponse(
+      res,
+      200,
+      "Get current user successful",
+      toPublicUser(user),
+    );
   } catch (err) {
     next(err);
   }
 };
 
-export const verifyEmailHandler = async (req:Request, res: Response, next:NextFunction) => {
-    try {
-        const token = req.query.token as string | undefined;
-        if(!token) {
-            return errorResponse(res, 400, "Token must be on URL");
-        }
-        const result = await verifyUserEmail(token);
-        return successResponse(res, 200, result.message);
-    } catch (err) {
-        next(err);
+export const verifyEmailHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const token = req.query.token as string | undefined;
+    if (!token) {
+      return errorResponse(res, 400, "Token must be on URL");
     }
+    const result = await verifyUserEmail(token);
+    return successResponse(res, 200, result.message);
+  } catch (err) {
+    next(err);
+  }
 };
 
-
-
-export const resendVerificationHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const {email} = resendSchema.parse(req.body);
-        await resendVerificationEmail(email);
-        return successResponse(res, 200, "Check your inbox, new verif link has been sent. (only if your email has registered but not verrified yes)");
-    } catch (err) {
-        next(err);
-    }
+export const resendVerificationHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { email } = resendSchema.parse(req.body);
+    await resendVerificationEmail(email);
+    return successResponse(
+      res,
+      200,
+      "Check your inbox, new verif link has been sent. (only if your email has registered but not verrified yes)",
+    );
+  } catch (err) {
+    next(err);
+  }
 };
-export const forgotPasswordHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const forgotPasswordHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { email } = forgotPasswordSchema.parse(req.body);
     await requestPasswordReset(email);
-    return successResponse(res, 200, "If the email is registered, a password reset link has been sent");
+    return successResponse(
+      res,
+      200,
+      "If the email is registered, a password reset link has been sent",
+    );
   } catch (err) {
     next(err);
   }
 };
 
-export const resetPasswordHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const resetPasswordHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { token, newPassword } = resetPasswordSchema.parse(req.body);
     await resetPassword(token, newPassword);
@@ -129,6 +193,16 @@ export const resetPasswordHandler = async (req: Request, res: Response, next: Ne
   } catch (err) {
     next(err);
   }
+};
+
+export const logoutHandler = (req: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+  return successResponse(res, 200, "Logout successfull", null);
 };
 
 // export const testEmailHandler = async (req: Request, res: Response, next: NextFunction) => {
