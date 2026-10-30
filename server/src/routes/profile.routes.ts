@@ -16,3 +16,4 @@ profileRouter.delete("/delete-account", verifyToken, deleteAccountHandler);
 profileRouter.get("/referral", verifyToken, getReferralSummaryHandler);
 
 export default profileRouter;
+    

@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
+import cookieParser from "cookie-parser";
 import { successResponse, errorResponse } from "./utils/response";
 import healthRouter from "./routes/health.routes";
 import authRouter from "./routes/auth.routes";
@@ -18,9 +19,10 @@ import profileRouter from "./routes/profile.routes";
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({crossOriginResourcePolicy: {policy: "cross-origin"}}));
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
+app.use(cookieParser());
 app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
 // app.get("/", (_req: Request, res: Response) => {
@@ -43,6 +45,12 @@ mountRouter(app, "/api/organizers", 'Organizers:Events', organizerRoutes);
 mountRouter(app, '/api/transactions', 'Transaksi', transactionRoutes);
 mountRouter(app, "/api/payments","Pembayaran:Midtrans",paymentRouter);
 
+app.post("/api/login", async (req, res) => {
+  res.cookie("token", jwt, {
+    httpOnly: true,
+    se
+  })
+})
 
 //---------------------- batas error :v
 
