@@ -50,7 +50,7 @@ export default function PointSection({
         <p className="text-xs text-neutral-400">Log in to use your points.</p>
       ) : (
         <p className="text-xs text-neutral-600">
-          You have <span className="font-bold text-amber-600">{balance.toLocaleString("id-ID")} points</span>
+          You have <span className="font-bold text-[#EA580C]">{balance.toLocaleString("id-ID")} points</span>
         </p>
       )}
 

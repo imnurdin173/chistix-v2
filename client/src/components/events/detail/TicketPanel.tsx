@@ -57,7 +57,7 @@ export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
           id="variant"
           value={selected.id}
           onChange={(e) => handleSelectTicket(e.target.value)}
-          className="w-full rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-700 focus:border-orange-500 focus:outline-none"
+          className="w-full rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-700 focus:border-[#EA580C] focus:outline-none"
         >
           {tickets.map((t) => (
             <option key={t.id} value={t.id}>
@@ -106,7 +106,7 @@ export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
                 {formatRupiah(selected.priceAnchor * quantity)}
               </span>
             )}
-            <span className="text-lg font-bold text-orange-600">
+            <span className="text-lg font-bold text-[#EA580C]">
               {selected.price === 0 ? "Free" : formatRupiah(totalPrice)}
             </span>
           </div>
@@ -122,7 +122,7 @@ export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
       {isAvailable ? (
         <Link
           href={cartHref}
-          className="block w-full rounded-full bg-orange-500 py-3 text-center text-sm font-bold text-white hover:bg-orange-600"
+          className="block w-full rounded-full bg-[#EA580C] py-3 text-center text-sm font-bold text-white hover:bg-[#BB4D00]"
         >
           Order Ticket
         </Link>

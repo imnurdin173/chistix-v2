@@ -44,7 +44,7 @@ export default function EventToolbar({ defaultSearch }: EventToolbarProps) {
         <select
           id="sort"
           defaultValue=""
-          className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-orange-500 focus:outline-none"
+          className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-[#EA580C] focus:outline-none"
         >
           <option value="" disabled>
             Select option
@@ -64,7 +64,7 @@ export default function EventToolbar({ defaultSearch }: EventToolbarProps) {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="Search event name..."
-          className="w-full rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm focus:border-orange-500 focus:outline-none"
+          className="w-full rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm focus:border-[#EA580C] focus:outline-none"
         />
       </div>
     </div>

@@ -26,7 +26,7 @@ export default function VoucherSection({ appliedCode, onApply, onRemove }: Vouch
   return (
     <section className="space-y-2 rounded-xl border border-neutral-100 bg-neutral-50 p-4">
       <label htmlFor="voucher" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-700">
-        <Tag className="size-4 text-amber-600" />
+        <Tag className="size-4 text-[#EA580C]" />
         Voucher Discount
       </label>
 
@@ -34,7 +34,7 @@ export default function VoucherSection({ appliedCode, onApply, onRemove }: Vouch
         <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <div>
             <p className="text-sm font-bold text-amber-700">{appliedCode}</p>
-            <p className="text-xs text-amber-600">This code will be validated when you check out.</p>
+            <p className="text-xs text-[#EA580C]">This code will be validated when you check out.</p>
           </div>
           <button
             type="button"
@@ -53,12 +53,12 @@ export default function VoucherSection({ appliedCode, onApply, onRemove }: Vouch
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="Enter voucher code"
-            className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm uppercase placeholder:normal-case focus:border-amber-500 focus:outline-none"
+            className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm uppercase placeholder:normal-case focus:border-[#EA580C] focus:outline-none"
           />
           <button
             type="submit"
             disabled={!code.trim()}
-            className="shrink-0 rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="shrink-0 rounded-lg bg-[#EA580C] px-5 py-2 text-sm font-semibold text-white hover:bg-[#BB4D00] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
             Apply
           </button>

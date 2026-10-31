@@ -72,7 +72,7 @@ export default function EventPagination({ currentPage, totalPages, searchParams 
             aria-current={item === currentPage ? "page" : undefined}
             className={
               item === currentPage
-                ? `${baseClass} border-orange-500 bg-orange-500 text-white`
+                ? `${baseClass} border-[#EA580C] bg-[#EA580C] text-white`
                 : `${baseClass} border-neutral-300 text-neutral-700 hover:bg-orange-50`
             }
           >

@@ -42,7 +42,7 @@ export default function EventDescription({ description }: { description: string 
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           aria-expanded={isExpanded}
-          className="flex w-full items-center justify-center gap-1 border-t border-neutral-100 py-2.5 text-xs font-semibold text-neutral-500 hover:text-orange-600"
+          className="flex w-full items-center justify-center gap-1 border-t border-neutral-100 py-2.5 text-xs font-semibold text-neutral-500 hover:text-[#EA580C]"
         >
           {isExpanded ? "Show less" : "Read more"}
           <ChevronDown className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />

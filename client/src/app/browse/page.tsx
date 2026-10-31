@@ -6,6 +6,8 @@ import EventPagination from "@/components/events/EventPagination";
 import { apiFetch } from "@/lib/api";
 import { toDigits } from "@/lib/format";
 import type { EventsResponse } from "@/types/event";
+import Navbar from "@/components/menubar/navbar";
+import Footer from "@/components/menubar/footer";
 
 export const instant = false;
 
@@ -69,6 +71,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const isFiltering = Object.values(filters).some(Boolean);
 
   return (
+    <>
+    <Navbar />
     <main className="bg-amber-50/60 py-8">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 md:grid-cols-[240px_1fr]">
         <aside className="h-fit rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -106,7 +110,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
                 {(isFiltering || currentPage > 1) && (
                   <Link
                     href="/browse"
-                    className="mt-3 inline-block text-sm font-semibold text-orange-600 hover:underline"
+                    className="mt-3 inline-block text-sm font-semibold text-[#EA580C] hover:underline"
                   >
                     {isFiltering ? "Clear all filters" : "Back to first page"}
                   </Link>
@@ -145,5 +149,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         </section>
       </div>
     </main>
+    <Footer />
+  </>
   );
 }

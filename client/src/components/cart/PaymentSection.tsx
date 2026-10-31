@@ -30,7 +30,7 @@ export default function PaymentSection({ total, isSubmitting, error, onCheckout 
         type="button"
         onClick={onCheckout}
         disabled={isSubmitting}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 text-sm font-bold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300"
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#EA580C] py-3 text-sm font-bold text-white hover:bg-[#BB4D00] disabled:cursor-not-allowed disabled:bg-neutral-300"
       >
         {isSubmitting ? (
           <>

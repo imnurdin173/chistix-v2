@@ -36,7 +36,7 @@ export default function OrderSummary({ quantity, subtotal, voucherDiscount, poin
 
       <div className="flex items-center justify-between border-t border-neutral-200 pt-3">
         <span className="text-sm font-bold text-neutral-800">Total Amount</span>
-        <span className="text-base font-bold text-amber-600">{formatRupiah(total)}</span>
+        <span className="text-base font-bold text-[#EA580C]">{formatRupiah(total)}</span>
       </div>
     </section>
   );
