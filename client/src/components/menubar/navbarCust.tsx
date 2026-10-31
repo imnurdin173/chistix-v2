@@ -164,7 +164,7 @@ export default function navbarCust() {
                 {/* Menu Navigasi */}
                 <div className="pt-2 text-right text-xs font-medium text-gray-700">
                   <Link
-                    href="/myaccount/profile"
+                    href="/profile"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -174,7 +174,7 @@ export default function navbarCust() {
                   <hr className="border-gray-200 my-1" />
 
                   <Link
-                    href="/myaccount/change-password"
+                    href="/change-password"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -254,7 +254,7 @@ export default function navbarCust() {
 
                 <hr className="border-gray-100 pt-2" />
                 <Link
-                  href="/myaccount/profile"
+                  href="/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
@@ -268,7 +268,7 @@ export default function navbarCust() {
                   Your Ticket
                 </Link>
                 <Link
-                  href="/myaccount/change-password"
+                  href="/change-password"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
