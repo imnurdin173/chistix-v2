@@ -163,6 +163,7 @@ export const resendVerificationHandler = async (
     next(err);
   }
 };
+
 export const forgotPasswordHandler = async (
   req: Request,
   res: Response,
