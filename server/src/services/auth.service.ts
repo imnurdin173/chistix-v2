@@ -90,7 +90,7 @@ export async function registerUser(input: RegisterInput) {
 
   try {
     const token = await createVerificationToken(user.id);
-    const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
+    const link = `${env.appUrl}/verify-registration?token=${token}`;
     await sendMail(user.email, "Verification Account Chistix", "verifyEmail", {
       name: user.name,
       link,
@@ -286,7 +286,7 @@ export const resendVerificationEmail = async (email: string) => {
   await prisma.verification.deleteMany({ where: { userId: user.id } });
 
   const token = await createVerificationToken(user.id);
-  const link = `${env.appUrl}/api/auth/verify-email?token=${token}`;
+  const link = `${env.appUrl}/verify-registration?token=${token}`;
   await sendMail(user.email, "Verif Email Chistix", "verifyEmail", {
     name: user.name,
     link,

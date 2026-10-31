@@ -179,7 +179,7 @@ export default function Footer() {
           </ul>
         </div>
         <p className="mt-6 border-t border-amber-200 py-4 text-center text-sm text-gray-700">
-          © {new Date().getFullYear()} Chistix Team. All Rights Reserved.
+          © 2026 Chistix Team. All Rights Reserved.
         </p>
       </div>
     </footer>
