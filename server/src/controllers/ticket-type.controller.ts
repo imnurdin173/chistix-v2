@@ -24,6 +24,8 @@ export const createTicketTypeHandler = async (
     }
 }
 
+
+
 export const getEventTicketTypesHandler= async (
     req:Request,
     res: Response,
