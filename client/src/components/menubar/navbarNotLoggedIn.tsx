@@ -69,12 +69,12 @@ export default function navbarNotLoggedIn() {
 
         <Link
           href="/events"
-          className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold md:inline-flex"
+          className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold lg:inline-flex"
         >
           Discover
         </Link>
 
-        <div className="ml-auto hidden items-center gap-3 md:flex">
+        <div className="ml-auto hidden items-center gap-3 lg:flex">
           <Link
             href="/login"
             onClick={(e) => {
@@ -99,7 +99,7 @@ export default function navbarNotLoggedIn() {
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Tutup menu" : "Buka menu"}
-          className="ml-auto inline-flex size-10 items-center justify-center border-amber-500 text-amber-600 md:hidden"
+          className="ml-auto inline-flex size-10 items-center justify-center border-amber-500 text-amber-600 lg:hidden"
         >
           <span className="relative block h-4 w-5" aria-hidden="true">
             <span
@@ -126,18 +126,18 @@ export default function navbarNotLoggedIn() {
       <div
         id="mobile-menu"
         inert={!open}
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none md:hidden ${
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none lg:hidden ${
           open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
         <div className="overflow-hidden">
           <div className="flex flex-col gap-4 border-t border-amber-100 px-4 py-4">
             <Link
-              href="/events"
+              href="/browse"
               onClick={closeMenu}
               className="text-sm text-center font-bold text-gray-900"
             >
-              What&apos;s On
+              Discover
             </Link>
             <Link
               href="#"

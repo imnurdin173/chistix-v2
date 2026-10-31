@@ -11,7 +11,7 @@ import NavbarCust from "./navbarCust";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
-  if (loading) return null; //untuk skeleton
+  // if (loading) return null; //untuk skeleton
 
   const [open, setOpen] = useState(false);
   const closeMenu = () => setOpen(false);

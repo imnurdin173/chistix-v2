@@ -6,6 +6,7 @@ import { useAuth } from "../providers/auth-provider";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SearchForm } from "../ui/searchForm";
+import { Chevron } from "../ui/chevron";
 import {
   Search,
   ShoppingBag,
