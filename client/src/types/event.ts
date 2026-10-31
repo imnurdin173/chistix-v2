@@ -9,7 +9,7 @@ export interface EventTicketType {
   quota: number;
   sold: number;
   saleStart: string;
-  saleEnd: string;
+  saleEnd: string | null;
 }
 
 export interface EventOrganizer {
@@ -44,4 +44,23 @@ export interface EventsPagination {
 export interface EventsResponse {
   events: EventListItem[];
   pagination: EventsPagination;
+}
+
+// Detail endpoint returns more fields than the list
+export interface EventDetail extends EventListItem {
+  venueMapsUrl: string | null;
+  coverImages: string[];
+  deletedAt: string | null;
+}
+
+export type TicketStatus = "AVAILABLE" | "NOT_STARTED" | "ENDED" | "SOLD_OUT";
+
+// Ticket data prepared by the server for the ticket panel
+export interface TicketOption {
+  id: string;
+  name: string;
+  price: number;
+  priceAnchor: number | null;
+  remaining: number;
+  status: TicketStatus;
 }

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { formatThousands, toDigits } from "@/lib/format";
 
-// Nilai "value" harus sama persis dengan enum EventCategory di backend (Prisma)
+// value HARUS sama dengan enum EventCategory di backend (schema.prisma)
 const CATEGORIES = [
   { value: "MUSIC", label: "Music" },
   { value: "SEMINAR", label: "Seminar" },
@@ -21,28 +22,31 @@ const LOCATIONS = ["DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta", 
 type FilterValues = {
   category: string;
   location: string;
-  minPrice: string;
+  minPrice: string; // selalu angka murni, contoh "40000"
   maxPrice: string;
 };
 
 type EventFilterSidebarProps = {
-  defaultValues: FilterValues; // nilai awal dari URL
+  defaultValues: FilterValues;
 };
+
+const baseInputClass =
+  "w-full rounded-lg border border-neutral-300 bg-white py-2 text-sm text-neutral-700 focus:border-orange-500 focus:outline-none";
+const selectClass = `${baseInputClass} px-3`;
+const priceInputClass = `${baseInputClass} pl-10 pr-3`;
 
 export default function EventFilterSidebar({ defaultValues }: EventFilterSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // STATE: satu per input
   const [category, setCategory] = useState(defaultValues.category);
   const [location, setLocation] = useState(defaultValues.location);
   const [minPrice, setMinPrice] = useState(defaultValues.minPrice);
   const [maxPrice, setMaxPrice] = useState(defaultValues.maxPrice);
   const [error, setError] = useState("");
 
-  // Memasukkan nilai filter ke URL
   function applyFilters(values: FilterValues) {
-    const params = new URLSearchParams(window.location.search); // search tetap dipertahankan
+    const params = new URLSearchParams(window.location.search);
 
     for (const [key, value] of Object.entries(values)) {
       if (value) {
@@ -51,7 +55,7 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
         params.delete(key);
       }
     }
-    params.delete("page"); // filter baru → kembali ke halaman 1
+    params.delete("page");
 
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
@@ -59,8 +63,8 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
 
   function handleSave() {
     if (minPrice && maxPrice && Number(minPrice) > Number(maxPrice)) {
-      setError("Harga minimum tidak boleh lebih besar dari harga maksimum.");
-      return; // berhenti, filter tidak diterapkan
+      setError("Minimum price cannot be greater than maximum price.");
+      return;
     }
     setError("");
     applyFilters({ category, location, minPrice, maxPrice });
@@ -72,12 +76,8 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
     setMinPrice("");
     setMaxPrice("");
     setError("");
-    // kirim nilai kosong langsung (bukan baca state, karena state belum berubah di sini)
     applyFilters({ category: "", location: "", minPrice: "", maxPrice: "" });
   }
-
-  const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 focus:border-orange-500 focus:outline-none";
 
   return (
     <div className="space-y-5">
@@ -90,7 +90,7 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
           id="category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">All Categories</option>
           {CATEGORIES.map((c) => (
@@ -110,7 +110,7 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
           id="location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">All Locations</option>
           {LOCATIONS.map((loc) => (
@@ -124,28 +124,41 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
       {/* PRICE RANGE */}
       <div className="space-y-2">
         <p className="text-sm font-semibold text-neutral-900">Price Range</p>
-        <input
-          type="number"
-          min={0}
-          inputMode="numeric"
-          placeholder="Minimum Price"
-          value={minPrice}
-          onChange={(e) => setMinPrice(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          type="number"
-          min={0}
-          inputMode="numeric"
-          placeholder="Maximum Price"
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-          className={inputClass}
-        />
+
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">
+            Rp
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Minimum price"
+            placeholder="Minimum Price"
+            value={formatThousands(minPrice)}
+            onChange={(e) => setMinPrice(toDigits(e.target.value))}
+            className={priceInputClass}
+          />
+        </div>
+
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">
+            Rp
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Maximum price"
+            placeholder="Maximum Price"
+            value={formatThousands(maxPrice)}
+            onChange={(e) => setMaxPrice(toDigits(e.target.value))}
+            className={priceInputClass}
+          />
+        </div>
+
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
-      {/* TOMBOL */}
+      {/* BUTTONS */}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"

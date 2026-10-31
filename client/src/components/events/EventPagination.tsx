@@ -52,7 +52,7 @@ export default function EventPagination({ currentPage, totalPages, searchParams 
       ) : (
         <Link
           href={buildHref(currentPage - 1, searchParams)}
-          aria-label="Halaman sebelumnya"
+          aria-label="Previous page"
           className={`${baseClass} border-neutral-300 text-neutral-700 hover:bg-orange-50`}
         >
           <ChevronLeft className="size-4" />
@@ -89,7 +89,7 @@ export default function EventPagination({ currentPage, totalPages, searchParams 
       ) : (
         <Link
           href={buildHref(currentPage + 1, searchParams)}
-          aria-label="Halaman berikutnya"
+          aria-label="Next page"
           className={`${baseClass} border-neutral-300 text-neutral-700 hover:bg-orange-50`}
         >
           <ChevronRight className="size-4" />
