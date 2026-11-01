@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
 import OrganizerSidebar from '@/components/sidebar/organizerSidebar'
+import NavbarOrganizer from '@/components/menubar/navbarOrganizer'
+import Footer from '@/components/menubar/footer'
 import type { AuthUser } from '@/types/organizer'
 
 export default function DashboardLayout({
@@ -65,12 +67,14 @@ export default function DashboardLayout({
 
   return (
     <div className='min-h-screen bg-[#faf8f4] text-neutral-800 font-sans flex flex-col'>
+        <NavbarOrganizer />
         <div className='flex-1 w-full p-4 md:p-8'>
             <div className='max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-start'>
                 {user.role === "ORGANIZER" && <OrganizerSidebar />}
                 <div className='flex-1 w-full'>{children}</div>
             </div>
         </div>
+        <Footer />
     </div>
   )
 }
