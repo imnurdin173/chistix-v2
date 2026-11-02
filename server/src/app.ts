@@ -17,6 +17,7 @@ import apiIndexRouter from "./routes/apiIndex.routes";
 import transactionRoutes from "./routes/transaction.routes";
 import paymentRouter from "./routes/payment.routes";
 import profileRouter from "./routes/profile.routes";
+import reviewRouter from "./routes/review.router";
 
 const app = express();
 
@@ -45,7 +46,7 @@ mountRouter(app, "/api/organizers", "Organizers:Events", organizerRoutes);
 // mountRouter(app, "/api/transactions", 'Transaksi', organizerRoutes);
 mountRouter(app, "/api/transactions", "Transaksi", transactionRoutes);
 mountRouter(app, "/api/payments", "Pembayaran:Midtrans", paymentRouter);
-
+mountRouter(app, "/api/reviews", "Reviews Events", reviewRouter);
 //---------------------- batas error :v
 
 app.use((req: Request, res: Response) => {

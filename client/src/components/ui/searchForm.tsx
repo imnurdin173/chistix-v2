@@ -2,12 +2,22 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 
 type Suggestion = {
   id: string;
   title: string;
   slug: string;
   city: string | null;
+};
+
+// Backend boleh mengembalikan array langsung atau { suggestions: [...] }
+type SuggestPayload = Suggestion[] | { suggestions: Suggestion[] };
+
+type SearchResult = {
+  query: string; // query yang menghasilkan data ini
+  items: Suggestion[];
+  failed: boolean;
 };
 
 type SearchFormProps = {
@@ -20,6 +30,13 @@ type SearchFormProps = {
 
 const MIN_CHARS = 2;
 const DEBOUNCE_MS = 250;
+
+const PLACEHOLDER = [
+  "Event in Jakarta",
+  "Music concert",
+  "Tech summit this weekend",
+  "charity run in Bandung",
+];
 
 function SearchIcon({ className = "size-5" }: { className?: string }) {
   return (
@@ -69,17 +86,22 @@ export function SearchForm({
 }: SearchFormProps) {
   const router = useRouter();
   const listId = useId();
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<SearchResult | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const trimmed = query.trim();
   const canSearch = trimmed.length >= MIN_CHARS;
   const showList = open && canSearch;
+
+  // Diturunkan dari state, bukan disimpan terpisah, supaya tidak bisa nyangkut
+  const loading = canSearch && result?.query !== trimmed;
+  const items = canSearch && result ? result.items : [];
+  const failed = !loading && !!result?.failed;
+
   // Baris "Search for ..." selalu menjadi opsi terakhir
   const searchRowIndex = items.length;
 
@@ -90,19 +112,17 @@ export function SearchForm({
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/events/suggest?q=${encodeURIComponent(trimmed)}`,
+        const payload = await apiFetch<SuggestPayload>(
+          `/events/suggest?q=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal },
         );
-        if (!res.ok) throw new Error("Request failed");
-        const data: { suggestions: Suggestion[] } = await res.json();
-        setItems(data.suggestions);
-        setActiveIndex(-1);
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") setItems([]);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        const list = Array.isArray(payload) ? payload : payload.suggestions;
+        setResult({ query: trimmed, items: list ?? [], failed: false });
+      } catch {
+        if (controller.signal.aborted) return; // request usang, abaikan
+        setResult({ query: trimmed, items: [], failed: true });
       }
+      setActiveIndex(-1);
     }, DEBOUNCE_MS);
 
     return () => {
@@ -111,24 +131,26 @@ export function SearchForm({
     };
   }, [trimmed]);
 
-  // Tutup dropdown saat klik di luar komponen
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
   useEffect(() => {
-    function onPointerDown(e: PointerEvent) {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, []);
+    if(open) return;
+    const id = setInterval(() =>
+    setPlaceholderIdx((i) => (i+1) % PLACEHOLDER.length),
+  10000,
+)
+return () => clearInterval(id);
+}, [open]);
 
   function goTo(href: string) {
     setOpen(false);
+    setActiveIndex(-1);
+    inputRef.current?.blur(); // tutup keyboard mobile
     router.push(href);
     onNavigate?.();
   }
 
   function goToSearch() {
-    if (!trimmed) return;
-    goTo(`/events?q=${encodeURIComponent(trimmed)}`);
+    goTo(trimmed ? `/browse?search=${encodeURIComponent(trimmed)}` : "/browse");
   }
 
   function selectIndex(i: number) {
@@ -137,14 +159,22 @@ export function SearchForm({
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value;
-    setQuery(value);
+    setQuery(e.target.value);
     setOpen(true);
     setActiveIndex(-1);
-    setLoading(value.trim().length >= MIN_CHARS);
+  }
+
+  // Tutup dropdown saat fokus keluar dari komponen (klik di luar / Tab)
+  function handleBlur(e: React.FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.nativeEvent.isComposing) return; // sedang mengetik dengan IME
+
     if (!showList) {
       if (e.key === "ArrowDown" && canSearch) setOpen(true);
       return;
@@ -167,7 +197,7 @@ export function SearchForm({
           e.preventDefault();
           selectIndex(activeIndex);
         }
-        break;
+        break; // activeIndex -1: biarkan form submit -> goToSearch
     }
   }
 
@@ -177,7 +207,7 @@ export function SearchForm({
   }
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div onBlur={handleBlur} className={`relative ${className}`}>
       <form
         action="/browse"
         method="GET"
@@ -187,14 +217,15 @@ export function SearchForm({
       >
         <SearchIcon className="size-5 shrink-0 text-gray-500" />
         <input
+          ref={inputRef}
           type="search"
           name="q"
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={() => setOpen(true)}
-          placeholder="Event in Jakarta"
-          aria-label="Cari event"
+          placeholder={PLACEHOLDER[placeholderIdx]}
+          aria-label="Search events"
           autoComplete="off"
           role="combobox"
           aria-expanded={showList}
@@ -205,7 +236,7 @@ export function SearchForm({
               ? `${listId}-opt-${activeIndex}`
               : undefined
           }
-          className="w-full bg-transparent text-xs sm:text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none"
+          className="w-full bg-transparent text-xs text-gray-800 placeholder:text-gray-500 focus:outline-none sm:text-sm"
         />
       </form>
 
@@ -224,7 +255,12 @@ export function SearchForm({
               Searching…
             </li>
           )}
-          {!loading && items.length === 0 && (
+          {failed && (
+            <li role="presentation" className="px-4 py-3 text-sm text-red-600">
+              Couldn&apos;t load suggestions
+            </li>
+          )}
+          {!loading && !failed && items.length === 0 && (
             <li role="presentation" className="px-4 py-3 text-sm text-gray-500">
               No events found
             </li>

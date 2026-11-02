@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { toDigits } from "@/lib/format";
 import type { EventsResponse } from "@/types/event";
 
+
 export const instant = false;
 
 const EVENTS_PER_PAGE = 9;

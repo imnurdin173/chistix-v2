@@ -61,7 +61,7 @@ export default function navbarCust() {
     <nav
       id="mainNav"
       aria-label="Navigasi utama"
-      className={`${isScrolled ? "bg-white/90" : "bg-amber-50"}`}
+      className={`${isScrolled ? "bg-white/90" : "bg-[#f3e8bf]"}`}
     >
       <div className="container mx-auto flex max-w-8xl items-center gap-4 px-4 py-2 sm:py-6 sm:px-6 lg:gap-6">
         <Link href="/" className="shrink-0" onClick={closeMenu}>
@@ -164,7 +164,7 @@ export default function navbarCust() {
                 {/* Menu Navigasi */}
                 <div className="pt-2 text-right text-xs font-medium text-gray-700">
                   <Link
-                    href="/myaccount/profile"
+                    href="/profile"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -174,7 +174,7 @@ export default function navbarCust() {
                   <hr className="border-gray-200 my-1" />
 
                   <Link
-                    href="/myaccount/change-password"
+                    href="/change-password"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -254,7 +254,7 @@ export default function navbarCust() {
 
                 <hr className="border-gray-100 pt-2" />
                 <Link
-                  href="/myaccount/profile"
+                  href="/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
@@ -268,7 +268,7 @@ export default function navbarCust() {
                   Your Ticket
                 </Link>
                 <Link
-                  href="/myaccount/change-password"
+                  href="/change-password"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >

@@ -171,3 +171,43 @@ export const deleteMyEvent = async (organizerId: string, eventId: string) => {
     data: { deletedAt: new Date() },
   });
 };
+
+export const suggestEvents = async (q: string) => {
+  const rows = await prisma.event.findMany({
+    where: {
+      deletedAt: null,
+      OR: [
+        {title: {contains: q, mode: "insensitive"}},
+        {organizer: {name: {contains: q, mode: "insensitive"}}},
+      ],
+    },
+    select: {id: true, title: true, slug: true, cityName: true},
+    take: 8,
+    orderBy: {title: "asc"}
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    slug: r.slug,
+    city: r.cityName,
+  }));
+};
+
+export const browseEvents = async (q?: string) => {
+  return prisma.event.findMany({
+    where: q? {
+      OR: [
+        {title: {contains:q, mode: "insensitive"}},
+        {organizer: {name: {contains: q, mode: "insensitive"}}},
+      ],
+    }
+    : undefined,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      organizer: {select: {name:true}},
+    },
+    orderBy: {title: "asc"},
+  });
+};

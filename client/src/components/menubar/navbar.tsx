@@ -8,14 +8,17 @@ import TopBar from "./topBar";
 import NavbarNotLoggedIn from "./navbarNotLoggedIn";
 import NavbarOrganizer from "./navbarOrganizer";
 import NavbarCust from "./navbarCust";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
+  const pathname = usePathname();
+  const disabledRoutes = ["/login", "/register", "/verify-registration","/forgot-password","/reset-password"];
+  const isAuthPage = pathname.startsWith("/auth") || disabledRoutes.includes(pathname);
   // if (loading) return null; //untuk skeleton
-
   const [open, setOpen] = useState(false);
-  const closeMenu = () => setOpen(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+
+  if (isAuthPage) return null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b">
