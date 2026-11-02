@@ -13,8 +13,8 @@ import { apiFetch } from "@/lib/api";
 
 export type AuthUser = {
   id: string;
-  name?: String;
-  mail?: string;
+  name?: string;
+  email?: string;
   role?: string;
   avatar?: string | null;
   points?:number;

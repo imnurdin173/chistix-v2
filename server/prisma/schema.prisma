@@ -149,7 +149,7 @@ model Event {
 
   vouchers     Voucher[]
   transactions Transaction[]
-  reviewRating Review[]
+  reviews      Review[]
   ticketTypes  TicketType[]
   organizer    User          @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
@@ -251,31 +251,22 @@ model Tickets {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  reviews Review[]
-
   @@map("tickets")
 }
 
 model Review {
-  id      String @id @default(uuid())
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  rating     Int
+  eventId    String
+  userId     String
+  reviewDesc String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ticketId String
-  tickets  Tickets @relation(fields: [ticketId], references: [id])
-
-  ratingScore      Int
-  reviewDesc       String?  @db.Text
-  orgReply         String?  @db.Text
-  reviewCustomerAt DateTime
-  orgReplyAt       DateTime
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
+  @@unique([eventId, userId])
   @@map("reviews")
 }

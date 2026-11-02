@@ -74,3 +74,11 @@ export const updateEventSchema = eventBaseSchema.partial().extend({
 });
 
 export type updateEventInput = z.infer<typeof updateEventSchema>;
+
+export const suggestEventsSchema = z.object({
+  q: z.string().trim().min(2, "Query must be at least 2 Characters"),
+});
+
+export const browseEventsSchema = z.object({
+  q: z.string().trim().optional()
+});

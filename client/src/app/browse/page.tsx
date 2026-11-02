@@ -9,6 +9,7 @@ import type { EventsResponse } from "@/types/event";
 import Navbar from "@/components/menubar/navbar";
 import Footer from "@/components/menubar/footer";
 
+
 export const instant = false;
 
 const EVENTS_PER_PAGE = 9;

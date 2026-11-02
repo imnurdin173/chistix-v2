@@ -61,7 +61,7 @@ export default function navbarOrganizer() {
     <nav
       id="mainNav"
       aria-label="Navigasi utama"
-      className={`${isScrolled ? "bg-white/90" : "bg-amber-50"}`}
+      className={`${isScrolled ? "bg-white/90" : "bg-[#f3e8bf]"}`}
     >
       <div className="container mx-auto flex max-w-8xl items-center gap-4 px-4 py-2 sm:py-6 sm:px-6 lg:gap-6">
         <Link href="/" className="shrink-0" onClick={closeMenu}>
@@ -95,15 +95,14 @@ export default function navbarOrganizer() {
 
         <Link
           href="/events"
-          className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold md:inline-flex"
+          className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold lg:inline-flex"
         >
           Discover
         </Link>
 
-
-<div
+        <div
           id="UserMenu"
-          className="hidden shrink-0 items-center gap-4 md:flex lg:gap-6 ml-auto"
+          className="hidden shrink-0 items-center gap-4 lg:flex lg:gap-6 ml-auto"
         >
           <Link
             href="/event-manager"
@@ -133,7 +132,9 @@ export default function navbarOrganizer() {
               <div className="absolute right-0 top-full mt-0 w-52 rounded-b-lg rounded-tl-lg border border-gray-200 bg-[#f4f5f7] p-4 shadow-xl z-50">
                 <div className="text-right pb-3">
                   <h4 className="font-bold text-gray-900 text-sm">
-                    <span className="truncate max-w-30 inline-block">Hello, {user?.name || "Customer"}</span>
+                    <span className="truncate max-w-30 inline-block">
+                      Hello, {user?.name || "Customer"}
+                    </span>
                   </h4>
                   <div className="mt-2 flex items-center justify-end text-xs text-gray-600 px-1">
                     <span className="mr-1">Point Balance: </span>
@@ -148,7 +149,7 @@ export default function navbarOrganizer() {
                 {/* Menu Navigasi */}
                 <div className="pt-2 text-right text-xs font-medium text-gray-700">
                   <Link
-                    href="/myaccount/profile"
+                    href="/profile"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -158,7 +159,7 @@ export default function navbarOrganizer() {
                   <hr className="border-gray-200 my-1" />
 
                   <Link
-                    href="/myaccount/change-password"
+                    href="/change-password"
                     onClick={() => setIsDropdownOpen(false)}
                     className="block py-2 px-2 hover:bg-gray-200/60 rounded transition"
                   >
@@ -179,9 +180,8 @@ export default function navbarOrganizer() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
-          <div className="flex items-center gap-2 md:hidden">
-
+        <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <Link href="/dashboard" className="p-1.5 text-gray-800">
               <Folder className="h-5 w-5" />
             </Link>
@@ -199,7 +199,7 @@ export default function navbarOrganizer() {
           </div>
 
           {isMobileMenuOpen && (
-            <div className="absolute inset-x-4 top-full z-50 mt-2 space-y-3 rounded-2xl border border-amber-200 bg-white p-4 shadow-2xl md:hidden">
+            <div className="absolute inset-x-4 top-full z-50 mt-2 space-y-3 rounded-2xl border border-amber-200 bg-white p-4 shadow-2xl lg:hidden">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div>
                   <p className="text-sm font-bold text-gray-800">
@@ -229,24 +229,24 @@ export default function navbarOrganizer() {
                 >
                   Event Manager
                 </Link>
-
-                <hr className="border-gray-100 pt-2" />
-                <Link
-                  href="/myaccount/profile"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block rounded px-2 py-2 hover:bg-amber-50"
-                >
-                  Profile
-                </Link>
                 <Link
                   href="/tickets"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
-                  Your Ticket
+                  Transactions
                 </Link>
+                <hr className="border-gray-100 pt-2" />
                 <Link
-                  href="/myaccount/change-password"
+                  href="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block rounded px-2 py-2 hover:bg-amber-50"
+                >
+                  Profile
+                </Link>
+
+                <Link
+                  href="/change-password"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >

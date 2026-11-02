@@ -1,19 +1,39 @@
+"use client"
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 import Navbar from "@/components/menubar/navbar";
 import Footer from "@/components/menubar/footer";
-import CustomerSidebar from "@/components/sidebar/customerSidebar";
+import SidebarMyAccount from "@/components/sidebar/sidebarMyAccount";
 
-// Shared frame for all customer dashboard pages
-export default function MyAccountLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Navbar />
-      <div className="flex-1 bg-[#faf8f4]">
-        <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 p-4 md:flex-row md:p-8">
-          <CustomerSidebar />
-          <div className="w-full min-w-0 flex-1">{children}</div>
-        </div>
+export default function MyAccountLayout({children}: {children: React.ReactNode}) {
+    const {user, loading} = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+if(!loading && !user) router.replace("/login");
+    }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-sm text-neutral-500">Loading...</p>
       </div>
+    );
+  }
+
+  if (!user) return null;
+
+  return (
+    <div className="">
+      <Navbar />
+
+      <main className="container bg-amber-50 mx-auto flex flex-col md:flex-row md:items-start max-w-8xl items-center gap-4 px-4 mt-5">
+        <SidebarMyAccount />
+        {children}
+      </main>
       <Footer />
-    </>
+    </div>
   );
 }
