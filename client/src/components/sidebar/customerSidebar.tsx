@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { KeyRound, LayoutGrid, Receipt, Ticket, UserRound } from "lucide-react";
+// import { KeyRound, LayoutGrid, Receipt, Ticket, UserRound } from "lucide-react";
+import { KeyRound, LayoutGrid, Receipt, Star, Ticket, UserRound } from "lucide-react";
 
 const MENU_ITEMS = [
   { name: "Overview", href: "/overview", icon: LayoutGrid },
   { name: "My Tickets", href: "/tickets", icon: Ticket },
   { name: "Transactions", href: "/transactions", icon: Receipt },
-  { name: "Profile", href: "/profile", icon: UserRound },
-  { name: "Change Password", href: "/change-password", icon: KeyRound },
+  { name: "Reviews", href: "/reviews", icon: Star },         
+//   { name: "Profile", href: "/profile", icon: UserRound },
+//   { name: "Change Password", href: "/change-password", icon: KeyRound },
 ];
 
 export default function CustomerSidebar() {

@@ -7,6 +7,7 @@ import { formatEventSchedule } from "@/lib/date";
 import { POINT_TO_RUPIAH } from "@/lib/constants";
 import type { TransactionDetail, TransactionStatus } from "@/types/transaction";
 import CancelOrderButton from "@/components/customer/CancelOrderButton";
+import PaymentCountdown from "@/components/customer/PaymentCountdown";
 
 export const instant = false;
 
@@ -166,6 +167,16 @@ export default async function InvoicePage({ searchParams }: InvoicePageProps) {
                         <h1 className="mt-4 text-2xl font-bold text-neutral-900">{view.title}</h1>
                         <p className={`mt-1 text-sm ${view.subtitleColor}`}>{view.subtitle}</p>
                     </div>
+
+                    {/* PAYMENT COUNTDOWN: only while waiting for payment */}
+                    {t.status === "WAITING_PAYMENT" && (
+                        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                            <p className="text-xs text-amber-700">Complete your payment within</p>
+                            <p className="mt-1 text-2xl">
+                                <PaymentCountdown deadline={t.paymentDeadline} />
+                            </p>
+                        </div>
+                    )}
 
                     {/* ORDER DETAILS */}
                     <div className="mt-6 space-y-3 border-t border-neutral-100 pt-5">

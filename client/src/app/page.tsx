@@ -1,21 +1,3 @@
-// "use client"
-
-// import Footer from '@/components/menubar/footer'
-// import Navbar from '@/components/menubar/navbar'
-// import React from 'react'
-
-// export default function HomePage() {
-//   return (
-//     <div id="homepage" className='min-h-screen bg-linear-to-t from-white to-[#f3e8bf]  bg-no-repeat max-h-200 antialiased'>
-//         <Navbar />
-//         <div className="container max-w-8xl mx-auto px-4 py-8">
-//             page
-//             </div>
-//             <Footer />
-//         </div>
-//   )
-// }
-
 import Link from "next/link";
 import Navbar from "@/components/menubar/navbar";
 import Footer from "@/components/menubar/footer";
@@ -33,7 +15,6 @@ const FALLBACK_IMAGE = "https://placehold.co/800x450?text=No+Image";
 const HERO_LIMIT = 5;
 const ROW_LIMIT = 10;
 
-// Upcoming published events (backend already sorts by start date, max 50 per request)
 async function getUpcomingEvents(): Promise<EventListItem[] | null> {
   try {
     const data = await apiFetch<EventsResponse>("/events?limit=50");
@@ -47,7 +28,6 @@ function getTotalSold(event: EventListItem) {
   return event.ticketTypes.reduce((sum, t) => sum + t.sold, 0);
 }
 
-// A ticket named "Presale" that is currently on sale and not sold out
 function findActivePresale(event: EventListItem, now: Date) {
   return (
     event.ticketTypes.find(
@@ -60,7 +40,6 @@ function findActivePresale(event: EventListItem, now: Date) {
   );
 }
 
-// One regular event card inside a row
 function RowEventCard({ event }: { event: EventListItem }) {
   const cheapest = event.ticketTypes[0] ?? null;
   return (
@@ -86,7 +65,6 @@ export default async function HomePage() {
   const events = await getUpcomingEvents();
   const now = new Date();
 
-  // ----- Build each section from the same list -----
   const heroSlides: HeroSlide[] = (events ?? [])
     .filter((e) => e.thumbnailImage)
     .slice(0, HERO_LIMIT)
