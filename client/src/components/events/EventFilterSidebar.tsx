@@ -31,7 +31,7 @@ type EventFilterSidebarProps = {
 };
 
 const baseInputClass =
-  "w-full rounded-lg border border-neutral-300 bg-white py-2 text-sm text-neutral-700 focus:border-orange-500 focus:outline-none";
+  "w-full rounded-lg border border-neutral-300 bg-white py-2 text-sm text-neutral-700 focus:border-[#EA580C] focus:outline-none";
 const selectClass = `${baseInputClass} px-3`;
 const priceInputClass = `${baseInputClass} pl-10 pr-3`;
 
@@ -163,14 +163,14 @@ export default function EventFilterSidebar({ defaultValues }: EventFilterSidebar
         <button
           type="button"
           onClick={handleReset}
-          className="rounded-lg border border-orange-500 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-50"
+          className="rounded-lg border border-[#EA580C] py-2 text-sm font-semibold text-[#EA580C] hover:bg-orange-50"
         >
           Reset
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-lg bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          className="rounded-lg bg-[#EA580C] py-2 text-sm font-semibold text-white hover:bg-[#BB4D00]"
         >
           Save
         </button>

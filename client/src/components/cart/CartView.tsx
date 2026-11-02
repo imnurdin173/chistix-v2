@@ -6,23 +6,46 @@ import VoucherSection from "./VoucherSection";
 import PointSection from "./PointSection";
 import OrderSummary from "./OrderSummary";
 import PaymentSection from "./PaymentSection";
+import { apiFetch, ApiError } from "@/lib/api";
+import { useAuthModal } from "@/components/providers/auth-modal-provider";
 import { POINT_TO_RUPIAH } from "@/lib/constants";
 import type { CartTicket } from "@/types/cart";
 
 type CartViewProps = {
   ticket: CartTicket;
   initialQuantity: number;
-  pointBalance: number | null; // null = unknown (user not logged in yet)
+  pointBalance: number | null; 
 };
 
+type CreatedTransaction = {
+  id: string;
+  totalPrice: number;
+  paymentUrl: string;
+};
+
+
+function toFriendlyMessage(error: ApiError): string {
+  switch (error.status) {
+    case 404:
+      return "The voucher code or ticket could not be found.";
+    case 409:
+      return "This ticket is no longer available in that quantity. Please refresh the page and try again.";
+    case 502:
+      return "The payment service is not responding. Please try again in a moment.";
+    default:
+      return error.message || "Failed to create the transaction. Please try again.";
+  }
+}
+
 export default function CartView({ ticket, initialQuantity, pointBalance }: CartViewProps) {
+  const { openLogin } = useAuthModal();
+
   // ----- STATE -----
   const [quantity, setQuantity] = useState(initialQuantity);
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
   const [isUsingPoints, setIsUsingPoints] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [checkoutPreview, setCheckoutPreview] = useState<Record<string, unknown> | null>(null); // temporary
 
   // ----- DERIVED VALUES -----
   const maxQuantity = ticket.remaining;
@@ -44,7 +67,6 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
   async function handleCheckout() {
     setIsSubmitting(true);
     setCheckoutError("");
-    setCheckoutPreview(null);
 
     // Shape EXACTLY as the backend expects (createTransactionSchema)
     const payload = {
@@ -55,19 +77,28 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
     };
 
     try {
-      // TODO (after login is ready):
-      // const data = await apiFetch<{ paymentUrl: string }>("/transactions", {
-      //   method: "POST",
-      //   body: JSON.stringify(payload),
-      //   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      // });
-      // window.location.href = data.paymentUrl; // go to Midtrans page
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setCheckoutPreview({ ...payload, totalOnScreen: total });
-    } catch {
-      setCheckoutError("Failed to create the transaction. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      const transaction = await apiFetch<CreatedTransaction>("/transactions", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!transaction.paymentUrl) {
+        throw new Error("Payment link is missing.");
+      }
+
+      // Leave Chistix and go to the Midtrans payment page.
+      // isSubmitting stays true so the button cannot be clicked twice while leaving.
+      window.location.href = transaction.paymentUrl;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setCheckoutError("Please log in to continue your purchase.");
+        openLogin();
+      } else if (error instanceof ApiError) {
+        setCheckoutError(toFriendlyMessage(error));
+      } else {
+        setCheckoutError("Failed to create the transaction. Please try again.");
+      }
+      setIsSubmitting(false); // only re-enable the button when something went wrong
     }
   }
 
@@ -113,13 +144,6 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
         error={checkoutError}
         onCheckout={handleCheckout}
       />
-
-      {/* TEMPORARY: shows the data that will be sent to the backend */}
-      {checkoutPreview && (
-        <pre className="overflow-auto rounded-xl bg-neutral-900 p-4 text-[11px] leading-relaxed text-emerald-300">
-          {JSON.stringify(checkoutPreview, null, 2)}
-        </pre>
-      )}
     </>
   );
 }

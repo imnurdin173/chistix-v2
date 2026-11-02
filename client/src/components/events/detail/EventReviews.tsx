@@ -136,7 +136,7 @@ export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
             type="button"
             aria-label={`Show review ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-2 rounded-full transition-all ${i === index ? "w-5 bg-orange-500" : "w-2 bg-neutral-300"}`}
+            className={`h-2 rounded-full transition-all ${i === index ? "w-5 bg-[#EA580C]" : "w-2 bg-neutral-300"}`}
           />
         ))}
       </div>

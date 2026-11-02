@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CartView from "@/components/cart/CartView";
 import { apiFetch } from "@/lib/api";
+import { apiFetchServer } from "@/lib/api.server";
 import type { EventListItem } from "@/types/event";
 import type { CartTicket } from "@/types/cart";
 
@@ -19,6 +20,16 @@ type CartResult =
 async function getEvent(slug: string) {
   try {
     return await apiFetch<EventListItem>(`/events/${encodeURIComponent(slug)}`);
+  } catch {
+    return null;
+  }
+}
+
+// Logged-in user's point balance (null = not logged in)
+async function getPointBalance(): Promise<number | null> {
+  try {
+    const me = await apiFetchServer<{ points: number }>("/profile/me");
+    return me.points ?? 0;
   } catch {
     return null;
   }
@@ -112,7 +123,7 @@ function CartMessage({ title, message }: { title: string; message: string }) {
       <p className="text-sm text-neutral-500">{message}</p>
       <Link
         href="/browse"
-        className="inline-block rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+        className="inline-block rounded-full bg-[#EA580C] px-5 py-2 text-sm font-semibold text-white hover:bg-[#BB4D00]"
       >
         Browse Events
       </Link>
@@ -126,7 +137,9 @@ type CartPageProps = {
 
 export default async function CartPage({ searchParams }: CartPageProps) {
   const query = await searchParams;
-  const result = await loadCart(query);
+
+  // Load the ticket data and the point balance at the same time
+  const [result, pointBalance] = await Promise.all([loadCart(query), getPointBalance()]);
 
   return (
     <main className="bg-amber-50/60 px-4 py-10">
@@ -135,12 +148,10 @@ export default async function CartPage({ searchParams }: CartPageProps) {
 
         {result.ok ? (
           <CartView
-            // key changes when the ticket or quantity in the URL changes
-            // → React creates a fresh CartView, so its state starts from the new quantity
             key={`${result.ticket.ticketTypeId}-${result.quantity}`}
             ticket={result.ticket}
             initialQuantity={result.quantity}
-            pointBalance={null} // TODO: fetch from GET /api/profile/me after login is ready
+            pointBalance={pointBalance}
           />
         ) : (
           <CartMessage title={result.title} message={result.message} />
