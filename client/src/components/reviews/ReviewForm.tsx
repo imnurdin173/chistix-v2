@@ -52,7 +52,7 @@ export default function ReviewForm({ ticketId, onCancel }: ReviewFormProps) {
     try {
       await apiFetch("/reviews", { method: "POST", body: JSON.stringify(body) });
       // Success: go to the "My Review" tab, which reloads the data from the server
-      router.push("/reviews?tab=mine&reviewed=1");
+      router.push("/dashboard/reviews/create-review?tab=mine&reviewed=1");
     } catch (err) {
       setError(getErrorMessage(err));
       setIsSubmitting(false);

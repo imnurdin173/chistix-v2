@@ -1,6 +1,4 @@
 import Link from "next/link";
-import Navbar from "@/components/menubar/navbar";
-import Footer from "@/components/menubar/footer";
 import EventCard from "@/components/events/EventCard";
 import HeroSlider, { type HeroSlide } from "@/components/home/HeroSlider";
 import EventRow from "@/components/home/EventRow";
@@ -88,7 +86,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <Navbar />
       <main className="bg-linear-to-b from-[#f3e8bf] via-white to-white pb-16">
         <div className="mx-auto max-w-6xl space-y-12 px-4 pt-6">
           {events === null ? (
@@ -167,7 +164,6 @@ export default async function HomePage() {
           )}
         </div>
       </main>
-      <Footer />
     </>
   );
 }

@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { KeyRound, LayoutGrid, Receipt, Star, Ticket, UserRound } from "lucide-react";
 
 const MENU_ITEMS = [
-  { name: "Overview", href: "/overview", icon: LayoutGrid },
-  { name: "My Tickets", href: "/tickets", icon: Ticket },
-  { name: "Transactions", href: "/transactions", icon: Receipt },
-  { name: "Reviews", href: "/reviews", icon: Star },         
+  { name: "Overview", href: "/dashboard/overview", icon: LayoutGrid },
+  { name: "My Tickets", href: "/dashboard/tickets", icon: Ticket },
+  { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
+  { name: "Reviews", href: "/dashboard/reviews/create-review", icon: Star },         
 //   { name: "Profile", href: "/profile", icon: UserRound },
 //   { name: "Change Password", href: "/change-password", icon: KeyRound },
 ];
