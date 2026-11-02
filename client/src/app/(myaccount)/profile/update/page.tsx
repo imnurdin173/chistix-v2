@@ -14,7 +14,8 @@ export default function UpdateProfilePage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+
+    useEffect(() => {
     if (user?.name) setName(user.name);
   }, [user?.name]);
 

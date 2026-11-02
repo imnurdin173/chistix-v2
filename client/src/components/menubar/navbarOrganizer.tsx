@@ -61,7 +61,7 @@ export default function navbarOrganizer() {
     <nav
       id="mainNav"
       aria-label="Navigasi utama"
-      className={`${isScrolled ? "bg-white/90" : "bg-amber-50"}`}
+      className={`${isScrolled ? "bg-white/90" : "bg-[#f3e8bf]"}`}
     >
       <div className="container mx-auto flex max-w-8xl items-center gap-4 px-4 py-2 sm:py-6 sm:px-6 lg:gap-6">
         <Link href="/" className="shrink-0" onClick={closeMenu}>
