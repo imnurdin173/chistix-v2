@@ -5,6 +5,8 @@ import {
   getEventsQuerySchema,
   updateEventSchema,
   eventIdOrSlugParamsSchema,
+  suggestEventsSchema,
+  browseEventsSchema,
 } from "../validations/event.validation";
 import {
   createEvent,
@@ -13,6 +15,8 @@ import {
   getEventDetail,
   updateMyEvent,
   deleteMyEvent,
+  browseEvents,
+  suggestEvents,
 } from "../services/event.service";
 import { successResponse } from "../utils/response";
 import {
@@ -83,7 +87,7 @@ export const getMyEventsHandler = async (
     return successResponse(
       res,
       200,
-      "Your Data event has succefully taken",
+      "Your Data event has succefully retrieved",
       data,
     );
   } catch (err) {
@@ -184,6 +188,26 @@ export const deleteEventVoucherHandler = async (
       req.user!.id,
     );
     return successResponse(res, 200, "Voucher deleted succesfully", voucher);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const suggestEventsHandler = async (req:Request, res: Response, next: NextFunction) => {
+  try {
+    const {q} = suggestEventsSchema.parse(req.query);
+    const suggestions =await suggestEvents(q);
+    return successResponse(res, 200, "Suggestions fetched successfully", {suggestions});
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const browseEventsHandler = async (req: Request, res:Response, next: NextFunction) => {
+  try {
+    const {q} = browseEventsSchema.parse(req.query);
+    const events = await browseEvents(q);
+    return successResponse(res, 200, "Events fetched succesfully", {events}); 
   } catch (err) {
     next(err);
   }
