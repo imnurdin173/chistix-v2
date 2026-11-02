@@ -76,7 +76,7 @@ export default async function ETicketPage({ params }: ETicketPageProps) {
       <ETicketMessage
         title="E-ticket not found"
         message="This order does not exist or is not yours."
-        href="/tickets"
+        href="/dashboard/tickets"
         linkLabel="Back to My Tickets"
       />
     );
@@ -97,7 +97,7 @@ export default async function ETicketPage({ params }: ETicketPageProps) {
       <ETicketMessage
         title="Your e-tickets are being issued"
         message="Your payment is confirmed. Please check back in a few minutes."
-        href="/tickets"
+        href="/dashboard/tickets"
         linkLabel="Back to My Tickets"
       />
     );
@@ -112,7 +112,7 @@ export default async function ETicketPage({ params }: ETicketPageProps) {
     <main className="min-h-screen bg-slate-100 py-8 print:bg-white print:py-0">
       {/* TOOLBAR: screen only */}
       <div className="mx-auto mb-2 flex max-w-[420px] items-center justify-between px-4 print:hidden">
-        <Link href="/tickets" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-neutral-900">
+        <Link href="/dashboard/tickets" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-neutral-900">
           <ArrowLeft className="size-4" />
           My Tickets
         </Link>

@@ -34,7 +34,7 @@ function buildHref(status: string, page: number) {
   if (status) params.set("status", status);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
-  return query ? `/transactions?${query}` : "/transactions";
+  return query ? `/dashboard/transactions?${query}` : "/dashboard/transactions";
 }
 
 function formatDateTime(iso: string) {
@@ -143,7 +143,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             {status ? `No ${activeFilter.label.toLowerCase()} transactions` : "No transactions yet"}
           </p>
           {status ? (
-            <Link href="/transactions" className="text-sm font-semibold text-[#EA580C] hover:underline">
+            <Link href="/dashboard/transactions" className="text-sm font-semibold text-[#EA580C] hover:underline">
               Show all transactions
             </Link>
           ) : (

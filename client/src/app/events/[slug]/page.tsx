@@ -9,8 +9,7 @@ import ShareCard from "@/components/events/detail/ShareCard";
 import SimilarEvents from "@/components/events/detail/SimilarEvents";
 import { apiFetch } from "@/lib/api";
 import type { EventDetail, TicketOption, TicketStatus } from "@/types/event";
-import Navbar from "@/components/menubar/navbar";
-import Footer from "@/components/menubar/footer";
+
 
 export const instant = false;
 
@@ -60,7 +59,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
   return (
     <>
-    <Navbar />
     <main className="bg-amber-50/60 py-8">
       <div className="mx-auto max-w-6xl space-y-8 px-4">
         <h1 className="text-2xl font-bold text-neutral-900 md:text-3xl">{event.title}</h1>
@@ -101,7 +99,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <SimilarEvents category={event.category} excludeId={event.id} />
       </div>
     </main>
-    <Footer />
     </>
   );
 }
