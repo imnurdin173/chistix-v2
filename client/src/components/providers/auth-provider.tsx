@@ -17,7 +17,7 @@ export type AuthUser = {
   email?: string;
   role?: string;
   avatar?: string | null;
-  points?:number;
+  points?: number;
   referralCode?: string;
 };
 
@@ -65,8 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be using into <AuthProvider>");
   return ctx;
 }
+///asdsd

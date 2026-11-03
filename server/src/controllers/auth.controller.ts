@@ -80,7 +80,7 @@ export async function googleLoginHandler(
     if (!result?.token) {
       return errorResponse(res, 500, "Login Google gagal menghasilkan token");
     }
-    
+
     const decoded = Jwt.decode(result.token) as { exp?: number } | null;
     const maxAgeMs = decoded?.exp
       ? decoded.exp * 1000 - Date.now()
