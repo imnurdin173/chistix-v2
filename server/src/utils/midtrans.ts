@@ -40,6 +40,10 @@ export async function createSnapTransaction(
         unit: "minutes",
         duration: PAYMENT_DEADLINE_MINUTES,
       },
+      // After paying, Midtrans sends the customer back to our invoice page
+      callbacks: {
+        finish: `${env.appUrl}/cart/checkout/invoice?id=${params.orderId}`,
+      },
     }),
   });
 

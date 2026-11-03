@@ -9,23 +9,22 @@ import { REVIEW_MAX_LENGTH } from "@/lib/constants";
 import type { CreateReviewInput } from "@/types/review";
 
 type ReviewFormProps = {
-  ticketId: string;
+  eventId: string;
   onCancel: () => void;
 };
 
 // Turn an API error into a message the customer understands
 function getErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 400) return err.message;
+    if (err.status === 400) return "Please check your rating and review, then try again.";
     if (err.status === 401) return "Your session has ended. Please log in again.";
-    if (err.status === 403) return "Only customers who attended this event can review it.";
-    if (err.status === 404) return "Reviews cannot be saved yet. The review service is still being built.";
-    if (err.status === 409) return "You have already reviewed this event.";
+    if (err.status === 403) return "You can review only after the event has finished and your ticket was scanned at the entrance.";
+    if (err.status === 404) return "This event could not be found.";
   }
   return "Failed to send your review. Please try again.";
 }
 
-export default function ReviewForm({ ticketId, onCancel }: ReviewFormProps) {
+export default function ReviewForm({ eventId, onCancel }: ReviewFormProps) {
   const router = useRouter();
   const ratingLabelId = useId();
   const commentId = useId();
@@ -47,12 +46,14 @@ export default function ReviewForm({ ticketId, onCancel }: ReviewFormProps) {
     setIsSubmitting(true);
     setError("");
 
-    const body: CreateReviewInput = { ticketId, ratingScore: rating, reviewDesc: comment.trim() };
+    // Shape EXACTLY as the backend expects (createReviewSchema)
+    const text = comment.trim();
+    const body: CreateReviewInput = { rating, reviewDesc: text === "" ? undefined : text };
 
     try {
-      await apiFetch("/reviews", { method: "POST", body: JSON.stringify(body) });
+      await apiFetch(`/reviews/${encodeURIComponent(eventId)}/reviews`, { method: "POST", body: JSON.stringify(body) });
       // Success: go to the "My Review" tab, which reloads the data from the server
-      router.push("/dashboard/reviews/create-review?tab=mine&reviewed=1");
+      router.push("/dashboard-customer/reviews?tab=mine&reviewed=1");
     } catch (err) {
       setError(getErrorMessage(err));
       setIsSubmitting(false);

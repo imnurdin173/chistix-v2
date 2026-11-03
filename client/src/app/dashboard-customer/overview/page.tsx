@@ -133,7 +133,7 @@ export default async function OverviewPage() {
         <section className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold text-neutral-900">Recent Transactions</h2>
-            <Link href="/dashboard/transactions" className="text-xs font-semibold text-[#EA580C] hover:underline">
+            <Link href="/dashboard-customer/transactions" className="text-xs font-semibold text-[#EA580C] hover:underline">
               View all
             </Link>
           </div>

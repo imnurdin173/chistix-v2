@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Check, MessageSquare, Star } from "lucide-react";
+import { Check, Star } from "lucide-react";
 import ReviewCandidateCard from "@/components/reviews/ReviewCandidateCard";
 import StarRating from "@/components/reviews/StarRating";
 import { requireCustomer } from "@/lib/auth.server";
 import { apiFetchServer } from "@/lib/api.server";
-import { SAMPLE_REVIEWS } from "@/lib/mock/reviews";
+import { fetchEventReviews } from "@/lib/reviews";
 import type { MyReview, ReviewCandidate } from "@/types/review";
 import type { TransactionDetail, TransactionListResponse } from "@/types/transaction";
 
@@ -33,19 +33,32 @@ async function getPaidTransactions(): Promise<TransactionDetail[] | null> {
   }
 }
 
-type MyReviewsResult = { reviews: MyReview[]; isSample: boolean } | null;
+// Reviews the customer already wrote.
+// The backend has no "my reviews" endpoint, so we read the reviews of every finished event
+// the customer bought (GET /reviews/:eventId/reviews) and keep the one written by this user.
+async function getMyReviews(
+  transactions: TransactionDetail[],
+  userId: string,
+  now: number,
+): Promise<MyReview[] | null> {
+  // One entry per finished event (a customer may have several orders for the same event)
+  const endedEvents = new Map<string, TransactionDetail["event"]>();
+  for (const t of transactions) {
+    if (new Date(t.event.eventEndDate).getTime() < now) endedEvents.set(t.event.id, t.event);
+  }
 
-// Reviews the customer already wrote
-async function getMyReviews(): Promise<MyReviewsResult> {
   try {
-    const reviews = await apiFetchServer<MyReview[]>("/reviews/me");
-    return { reviews, isSample: false };
+    const results = await Promise.all(
+      [...endedEvents.values()].map(async (event) => {
+        const data = await fetchEventReviews(event.id);
+        const review = data.reviews.find((r) => r.userId === userId);
+        return review ? { review, event } : null;
+      }),
+    );
+    return results
+      .filter((item): item is MyReview => item !== null)
+      .sort((a, b) => new Date(b.review.updatedAt).getTime() - new Date(a.review.updatedAt).getTime());
   } catch {
-    // GET /reviews/me is not built yet.
-    // In development only, show sample data so we can design the page.
-    if (process.env.NODE_ENV === "development") {
-      return { reviews: SAMPLE_REVIEWS, isSample: true };
-    }
     return null;
   }
 }
@@ -108,28 +121,29 @@ function EmptyState({ title, message, children }: { title: string; message: stri
   );
 }
 
-function MyReviewCard({ review }: { review: MyReview }) {
+function MyReviewCard({ item }: { item: MyReview }) {
+  const { review, event } = item;
   return (
     <article className="flex gap-4 rounded-2xl border border-neutral-100 bg-white p-4 shadow-xs">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={review.event.thumbnailImage ?? FALLBACK_IMAGE}
-        alt={review.event.title}
+        src={event.thumbnailImage ?? FALLBACK_IMAGE}
+        alt={event.title}
         className="aspect-[4/3] w-20 shrink-0 rounded-lg object-cover sm:w-24"
       />
 
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
           <Link
-            href={`/events/${review.event.slug}`}
+            href={`/events/${event.slug}`}
             className="line-clamp-2 text-sm font-bold text-neutral-900 hover:text-[#EA580C]"
           >
-            {review.event.title}
+            {event.title}
           </Link>
-          <span className="shrink-0 text-[11px] text-neutral-400">{formatShortDate(review.reviewCustomerAt)}</span>
+          <span className="shrink-0 text-[11px] text-neutral-400">{formatShortDate(review.updatedAt)}</span>
         </div>
 
-        <StarRating score={review.ratingScore} />
+        <StarRating score={review.rating} />
 
         {review.reviewDesc ? (
           <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-600">{review.reviewDesc}</p>
@@ -137,16 +151,6 @@ function MyReviewCard({ review }: { review: MyReview }) {
           <p className="text-xs italic text-neutral-400">No written review.</p>
         )}
 
-        {/* Only shown when the organizer has replied */}
-        {review.orgReply && (
-          <div className="rounded-xl border border-[#BB4D00]/15 bg-[#FFF5ED] p-3">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold text-[#BB4D00]">
-              <MessageSquare className="size-3.5" />
-              Reply from organizer
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-neutral-700">{review.orgReply}</p>
-          </div>
-        )}
       </div>
     </article>
   );
@@ -159,19 +163,20 @@ type ReviewsPageProps = {
 };
 
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
-  await requireCustomer(); // customers only
+  const user = await requireCustomer(); // customers only
 
   const query = await searchParams;
   // Never trust the URL: anything other than "mine" means the default tab
   const activeTab: Tab = query.tab === "mine" ? "mine" : "need";
   const justReviewed = query.reviewed === "1";
 
-  // Both requests run at the same time
-  const [transactions, myReviews] = await Promise.all([getPaidTransactions(), getMyReviews()]);
+  const now = Date.now();
+  const transactions = await getPaidTransactions();
+  const myReviews = transactions === null ? null : await getMyReviews(transactions, user.id, now);
 
-  const reviews = myReviews?.reviews ?? [];
+  const reviews = myReviews ?? [];
   const reviewedEventIds = new Set(reviews.map((r) => r.event.id));
-  const candidates = getReviewCandidates(transactions ?? [], reviewedEventIds, Date.now());
+  const candidates = getReviewCandidates(transactions ?? [], reviewedEventIds, now);
   const reviewableCount = candidates.filter((c) => c.attendedTicketId !== null).length;
 
   const tabs: { value: Tab; label: string; count: number; href: string }[] = [
@@ -210,12 +215,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
         <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
           <Check className="size-4 shrink-0" />
           Thank you! Your review has been posted.
-        </p>
-      )}
-
-      {myReviews?.isSample && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-          Showing sample reviews (development only). The review API is not ready yet.
         </p>
       )}
 
@@ -260,7 +259,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               </Link>
             </EmptyState>
           ) : (
-            reviews.map((r) => <MyReviewCard key={r.id} review={r} />)
+            reviews.map((item) => <MyReviewCard key={item.review.id} item={item} />)
           )}
         </section>
       )}

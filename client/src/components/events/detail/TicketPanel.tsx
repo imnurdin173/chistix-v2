@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
+import { apiFetch, ApiError } from "@/lib/api";
+import { useAuthModal } from "@/components/providers/auth-modal-provider";
 import type { TicketOption, TicketStatus } from "@/types/event";
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
@@ -16,14 +18,27 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
 type TicketPanelProps = {
   eventSlug: string;
   tickets: TicketOption[];
+  openLoginOnLoad?: boolean; // true when a logged-out visitor was sent back here from the cart
 };
 
-export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
+export default function TicketPanel({ eventSlug, tickets, openLoginOnLoad = false }: TicketPanelProps) {
   const defaultTicket = tickets.find((t) => t.status === "AVAILABLE") ?? tickets[0];
 
   // ----- STATE -----
   const [selectedId, setSelectedId] = useState(defaultTicket?.id ?? "");
   const [quantity, setQuantity] = useState(1);
+  const [isCheckingLogin, setIsCheckingLogin] = useState(false);
+  const [orderError, setOrderError] = useState("");
+  const router = useRouter();
+  const { openLogin } = useAuthModal();
+
+  // Sent here from the cart without being logged in: show the login popup on top of this event,
+  // then remove "?login=1" from the address so a refresh does not open it again.
+  useEffect(() => {
+    if (!openLoginOnLoad) return;
+    openLogin();
+    router.replace(`/events/${encodeURIComponent(eventSlug)}`, { scroll: false });
+  }, [openLoginOnLoad, openLogin, router, eventSlug]);
 
   if (tickets.length === 0) {
     return (
@@ -44,6 +59,30 @@ export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
   function handleSelectTicket(id: string) {
     setSelectedId(id);
     setQuantity(1);
+  }
+
+  // Only logged-in customers may go to the cart.
+  // We ask the backend directly (the login cookie is sent automatically),
+  // so this also works right after logging in through the popup.
+  async function handleOrder() {
+    setIsCheckingLogin(true);
+    setOrderError("");
+    try {
+      const me = await apiFetch<{ role: "CUSTOMER" | "ORGANIZER" }>("/profile/me");
+      if (me.role === "ORGANIZER") {
+        setOrderError("Organizer accounts cannot buy tickets.");
+        return;
+      }
+      router.push(cartHref);
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+        openLogin(); // not logged in: show the same login popup as the navbar
+      } else {
+        router.push(cartHref); // cannot check right now: the cart page checks again
+      }
+    } finally {
+      setIsCheckingLogin(false);
+    }
   }
 
   return (
@@ -120,12 +159,17 @@ export default function TicketPanel({ eventSlug, tickets }: TicketPanelProps) {
 
       {/* ORDER BUTTON */}
       {isAvailable ? (
-        <Link
-          href={cartHref}
-          className="block w-full rounded-full bg-[#EA580C] py-3 text-center text-sm font-bold text-white hover:bg-[#BB4D00]"
-        >
-          Order Ticket
-        </Link>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={handleOrder}
+            disabled={isCheckingLogin}
+            className="block w-full rounded-full bg-[#EA580C] py-3 text-center text-sm font-bold text-white hover:bg-[#BB4D00] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isCheckingLogin ? "Please wait..." : "Order Ticket"}
+          </button>
+          {orderError && <p className="text-center text-xs text-red-600">{orderError}</p>}
+        </div>
       ) : (
         <button
           type="button"
