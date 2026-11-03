@@ -22,7 +22,7 @@ async function getUpcomingEvents(): Promise<EventListItem[] | null> {
   }
 }
 
-function getTotalSold(event: EventListItem) {
+function getTotalSold (event: EventListItem) {
   return event.ticketTypes.reduce((sum, t) => sum + t.sold, 0);
 }
 

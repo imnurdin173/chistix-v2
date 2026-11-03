@@ -24,8 +24,7 @@ type ReviewCandidateCardProps = {
 export default function ReviewCandidateCard({ candidate, defaultOpen = false }: ReviewCandidateCardProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const { event } = candidate;
-  const ticketId = candidate.attendedTicketId;
-  const canReview = ticketId !== null;
+  const canReview = candidate.attendedTicketId !== null; // only customers whose ticket was scanned
 
   return (
     <article className="rounded-2xl border border-neutral-100 bg-white p-4 shadow-xs">
@@ -71,7 +70,7 @@ export default function ReviewCandidateCard({ candidate, defaultOpen = false }: 
         )}
       </div>
 
-      {isOpen && ticketId !== null && <ReviewForm ticketId={ticketId} onCancel={() => setIsOpen(false)} />}
+      {isOpen && canReview && <ReviewForm eventId={event.id} onCancel={() => setIsOpen(false)} />}
     </article>
   );
 }

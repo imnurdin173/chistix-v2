@@ -1,34 +1,50 @@
 // Shapes for the review feature.
-// These follow the Review model in schema.prisma and are OUR PROPOSAL for the API.
-// Confirm them with the backend teammate before the endpoints are built.
-
-// One review written by the logged-in customer (GET /api/reviews/me)
+// They follow the Review model in schema.prisma and the review API
+// (server/src/routes/review.router.ts, mounted at /api/reviews).
 
 import type { TransactionDetail } from "@/types/transaction";
 
-export interface MyReview {
+// One review, as returned by GET /api/reviews/:eventId/reviews
+export interface EventReview {
   id: string;
-  ticketId: string;
-  ratingScore: number; // 1–5
+  rating: number; // 1–5
   reviewDesc: string | null;
-  reviewCustomerAt: string;
-  orgReply: string | null;
-  orgReplyAt: string | null;
-  event: {
+  eventId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
     id: string;
-    title: string;
-    slug: string;
-    thumbnailImage: string | null;
-    eventStartDate: string;
-    eventEndDate: string;
+    name: string;
+    avatar: string | null;
   };
 }
 
-// Body we send to POST /api/reviews
+// Response of GET /api/reviews/:eventId/reviews
+export interface EventReviewsResponse {
+  reviews: EventReview[];
+  ratingSummary: {
+    average: number;
+    total: number;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Body we send to POST /api/reviews/:eventId/reviews
 export interface CreateReviewInput {
-  ticketId: string;
-  ratingScore: number;
-  reviewDesc: string;
+  rating: number;
+  reviewDesc?: string;
+}
+
+// A review the logged-in customer wrote, together with its event
+export interface MyReview {
+  review: EventReview;
+  event: TransactionDetail["event"];
 }
 
 // A finished event shown in the "Need Review" tab
