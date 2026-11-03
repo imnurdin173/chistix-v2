@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import OrganizerSidebar from "@/components/sidebar/organizerSidebar";
 
-export default function EventsLayout({ children }: { children: React.ReactNode }) {
+export default function EventsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const { user, loading } = useAuth();
 
@@ -35,3 +39,5 @@ export default function EventsLayout({ children }: { children: React.ReactNode }
     </div>
   );
 }
+
+////asdasd

@@ -1,4 +1,4 @@
-export type ApiFieldError = {field?: string, path?: string; message: string };
+export type ApiFieldError = { field?: string; path?: string; message: string };
 
 export class ApiError extends Error {
   status: number;
@@ -67,3 +67,4 @@ export async function apiFetch<T>(
 
   return body.data;
 }
+///sdds
