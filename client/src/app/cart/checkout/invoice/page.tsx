@@ -14,7 +14,7 @@ import PaymentStatusWatcher from "@/components/customer/PaymentStatusWatcher";
 export const instant = false;
 
 // Where "View My Tickets" goes (customer dashboard event list). Change here if the team picks another URL.
-const MY_TICKETS_URL = "/dashboard-customer?tab=tickets";
+const MY_TICKETS_URL = "/dashboard/tickets";
 
 type InvoiceQuery = {
     id?: string;

@@ -164,7 +164,7 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
 
       {hasPendingOrder && (
         <Link
-          href="/dashboard-customer?tab=transactions"
+          href="/dashboard/transactions"
           className="block text-center text-sm font-semibold text-[#EA580C] hover:underline"
         >
           Go to My Transactions to pay or cancel it

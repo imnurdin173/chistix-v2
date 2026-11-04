@@ -53,7 +53,7 @@ export default function ReviewForm({ eventId, onCancel }: ReviewFormProps) {
     try {
       await apiFetch(`/reviews/${encodeURIComponent(eventId)}/reviews`, { method: "POST", body: JSON.stringify(body) });
       // Success: go to the "My Review" tab, which reloads the data from the server
-      router.push("/dashboard-customer?tab=reviews&view=mine&reviewed=1");
+      router.push("/dashboard/reviews?tab=mine&reviewed=1");
     } catch (err) {
       setError(getErrorMessage(err));
       setIsSubmitting(false);
