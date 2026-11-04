@@ -14,12 +14,9 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+function getAuthHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
