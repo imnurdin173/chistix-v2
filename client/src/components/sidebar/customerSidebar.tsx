@@ -1,33 +1,27 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-// import { KeyRound, LayoutGrid, Receipt, Ticket, UserRound } from "lucide-react";
-import { KeyRound, LayoutGrid, Receipt, Star, Ticket, UserRound } from "lucide-react";
+import { LayoutGrid, Receipt, Star, Ticket, type LucideIcon } from "lucide-react";
+import { CUSTOMER_TABS, customerTabHref, type CustomerTab } from "@/lib/customerTabs";
 
-const MENU_ITEMS = [
-  { name: "Overview", href: "/dashboard-customer/overview", icon: LayoutGrid },
-  { name: "My Tickets", href: "/dashboard-customer/tickets", icon: Ticket },
-  { name: "Transactions", href: "/dashboard-customer/transactions", icon: Receipt },
-  { name: "Reviews", href: "/dashboard-customer/reviews", icon: Star },         
-//   { name: "Profile", href: "/profile", icon: UserRound },
-//   { name: "Change Password", href: "/change-password", icon: KeyRound },
-];
+const TAB_ICONS: Record<CustomerTab, LucideIcon> = {
+  overview: LayoutGrid,
+  tickets: Ticket,
+  transactions: Receipt,
+  reviews: Star,
+};
 
-export default function CustomerSidebar() {
-  const pathname = usePathname();
-
+// Menu of the customer dashboard. The page tells it which tab is open.
+export default function CustomerSidebar({ activeTab }: { activeTab: CustomerTab }) {
   return (
     <aside className="w-full shrink-0 rounded-2xl border border-neutral-100 bg-white p-4 shadow-xs md:w-64">
       <nav className="flex gap-1.5 overflow-x-auto md:flex-col md:overflow-visible">
-        {MENU_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname.startsWith(item.href);
+        {CUSTOMER_TABS.map((tab) => {
+          const Icon = TAB_ICONS[tab.value];
+          const isActive = tab.value === activeTab;
 
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={tab.value}
+              href={customerTabHref(tab.value)}
               aria-current={isActive ? "page" : undefined}
               className={`group flex shrink-0 items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive
@@ -40,7 +34,7 @@ export default function CustomerSidebar() {
                   isActive ? "text-[#BB4D00]" : "text-neutral-900 group-hover:text-[#BB4D00]"
                 }`}
               />
-              <span>{item.name}</span>
+              <span>{tab.label}</span>
             </Link>
           );
         })}

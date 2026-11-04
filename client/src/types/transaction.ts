@@ -19,6 +19,7 @@ export interface TransactionDetail {
   pointsUsed: number;
   paymentDeadline: string;
   paidAt: string | null;
+  paymentUrl?: string | null; // filled once the backend saves the Midtrans link
   createdAt: string;
   event: {
     id: string;
