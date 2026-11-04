@@ -1,24 +1,21 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Check, Star } from "lucide-react";
 import ReviewCandidateCard from "@/components/reviews/ReviewCandidateCard";
 import StarRating from "@/components/reviews/StarRating";
-import { requireCustomer } from "@/lib/auth.server";
+import type { CurrentUser } from "@/lib/auth.server";
 import { apiFetchServer } from "@/lib/api.server";
 import { fetchEventReviews } from "@/lib/reviews";
 import type { MyReview, ReviewCandidate } from "@/types/review";
 import type { TransactionDetail, TransactionListResponse } from "@/types/transaction";
 
-export const instant = false;
-export const metadata: Metadata = { title: "Reviews" };
-
 const FALLBACK_IMAGE = "https://placehold.co/400x300?text=No+Image";
 
 type Tab = "need" | "mine";
 
-type ReviewsQuery = {
-  tab?: string;
-  reviewed?: string; 
+type ReviewsTabProps = {
+  user: CurrentUser;
+  view?: string; // from ?view= ("mine" = My Review)
+  reviewed?: string; // from ?reviewed=1 right after posting a review
 };
 
 /* ---------- Data loading ---------- */
@@ -158,17 +155,11 @@ function MyReviewCard({ item }: { item: MyReview }) {
 
 /* ---------- Page ---------- */
 
-type ReviewsPageProps = {
-  searchParams: Promise<ReviewsQuery>;
-};
-
-export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
-  const user = await requireCustomer(); // customers only
-
-  const query = await searchParams;
-  // Never trust the URL: anything other than "mine" means the default tab
-  const activeTab: Tab = query.tab === "mine" ? "mine" : "need";
-  const justReviewed = query.reviewed === "1";
+// Tab "Reviews" of /customer
+export default async function ReviewsTab({ user, view, reviewed }: ReviewsTabProps) {
+  // Never trust the URL: anything other than "mine" means the default view
+  const activeTab: Tab = view === "mine" ? "mine" : "need";
+  const justReviewed = reviewed === "1";
 
   const now = Date.now();
   const transactions = await getPaidTransactions();
@@ -180,8 +171,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const reviewableCount = candidates.filter((c) => c.attendedTicketId !== null).length;
 
   const tabs: { value: Tab; label: string; count: number; href: string }[] = [
-    { value: "need", label: "Need Review", count: candidates.length, href: "/dashboard-customer/reviews" },
-    { value: "mine", label: "My Review", count: reviews.length, href: "/dashboard-customer/reviews?tab=mine" },
+    { value: "need", label: "Need Review", count: candidates.length, href: "/dashboard-customer?tab=reviews" },
+    { value: "mine", label: "My Review", count: reviews.length, href: "/dashboard-customer?tab=reviews&view=mine" },
   ];
 
   return (
@@ -254,7 +245,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
             <p className="rounded-xl bg-red-50 p-4 text-sm text-red-600">Failed to load your reviews. Please refresh the page.</p>
           ) : reviews.length === 0 ? (
             <EmptyState title="No reviews yet" message="Reviews you write will appear here.">
-              <Link href="/dashboard-customer/reviews" className="text-sm font-semibold text-[#EA580C] hover:underline">
+              <Link href="/dashboard-customer?tab=reviews" className="text-sm font-semibold text-[#EA580C] hover:underline">
                 See events to review
               </Link>
             </EmptyState>

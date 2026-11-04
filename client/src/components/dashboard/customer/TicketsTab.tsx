@@ -1,13 +1,8 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
-import { requireCustomer } from "@/lib/auth.server";
 import { apiFetchServer } from "@/lib/api.server";
 import { formatEventSchedule } from "@/lib/date";
 import type { TransactionDetail, TransactionListResponse } from "@/types/transaction";
-
-export const instant = false;
-export const metadata: Metadata = { title: "My Tickets" };
 
 const FALLBACK_IMAGE = "https://placehold.co/400x300?text=No+Image";
 
@@ -79,9 +74,8 @@ function TicketCard({ transaction: t, isPast }: { transaction: TransactionDetail
   );
 }
 
-export default async function MyTicketsPage() {
-  await requireCustomer(); // customers only
-
+// Tab "My Tickets" of /customer
+export default async function TicketsTab() {
   const transactions = await getPaidTransactions();
   const now = Date.now();
 

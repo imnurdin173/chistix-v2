@@ -43,6 +43,25 @@ export async function createTransaction(input: createTransactionInput) {
     }
 
     const now = new Date();
+        // One unpaid order per customer per ticket type.
+    // Stops a second order when the customer goes back from Midtrans and checks out again.
+    const pendingOrder = await tx.transaction.findFirst({
+      where: {
+        userId: input.userId,
+        ticketTypeId: input.ticketTypeId,
+        status: "WAITING_PAYMENT",
+        paymentDeadline: { gt: now },
+      },
+      select: { id: true },
+    });
+
+    if (pendingOrder) {
+      throw new AppError(
+        `You still have an unpaid order for this ticket (Order #${pendingOrder.id.slice(0, 8).toUpperCase()}). Please complete or cancel it first.`,
+        409,
+      );
+    }
+    
     if (now < ticketType.saleStart) {
       throw new AppError("ticket sales not open yet bro, still dreaming ", 409);
     }

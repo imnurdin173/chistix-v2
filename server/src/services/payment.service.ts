@@ -134,6 +134,7 @@ import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import { env } from "../config/env";
 import { POINT_TO_RUPIAH } from "../utils/constants";
+import { getMidtransStatus } from "../utils/midtrans";
 
 // Body that Midtrans sends to POST /api/payments/notification
 interface MidtransNotification {
@@ -263,4 +264,38 @@ export async function handlePaymentNotification(payload: MidtransNotification) {
     default:
       return { message: `Status "${payload.transaction_status}" ignored` };
   }
+}
+
+// Check the payment with Midtrans directly, then reuse the webhook logic.
+// Lets the invoice update itself even when the webhook cannot reach the server (localhost).
+export async function syncPaymentStatus(userId: string, transactionId: string) {
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    select: { userId: true, status: true },
+  });
+  if (!transaction) {
+    throw new AppError("Transaction not found", 404);
+  }
+  if (transaction.userId !== userId) {
+    throw new AppError("You do not have access to this transaction", 403);
+  }
+  if (transaction.status !== "WAITING_PAYMENT") {
+    return { status: transaction.status };
+  }
+
+  const midtrans = await getMidtransStatus(transactionId);
+
+  // 404 = customer has not chosen a payment method yet
+  if (midtrans.status_code === "404") {
+    return { status: "WAITING_PAYMENT" };
+  }
+
+  // Same checks as the webhook: signature, amount, then update + issue tickets
+  await handlePaymentNotification(midtrans);
+
+  const updated = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    select: { status: true },
+  });
+  return { status: updated?.status ?? "WAITING_PAYMENT" };
 }
