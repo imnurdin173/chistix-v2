@@ -16,6 +16,7 @@ export const eventBaseSchema = z.object({
   thumbnailImage: z.url("Thumbnail is not right"),
   coverImages: z.array(z.url()).default([]),
   videoUrl: z.url().optional(),
+  eventStatus: z.enum(["DRAFT", "PUBLISHED"]).optional(),
   scheduledPublishStart: z.coerce.date().optional(),
   scheduledPublishEnd: z.coerce.date().optional(),
 });
@@ -80,5 +81,5 @@ export const suggestEventsSchema = z.object({
 });
 
 export const browseEventsSchema = z.object({
-  q: z.string().trim().optional()
+  q: z.string().trim().optional(),
 });
