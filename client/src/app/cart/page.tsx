@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import CartView from "@/components/cart/CartView";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetchServer } from "@/lib/api.server";
 import type { EventListItem } from "@/types/event";
 import type { CartTicket } from "@/types/cart";
 
@@ -21,6 +23,24 @@ async function getEvent(slug: string) {
     return await apiFetch<EventListItem>(`/events/${encodeURIComponent(slug)}`);
   } catch {
     return null;
+  }
+}
+
+// Who is opening the cart
+type Viewer =
+  | { status: "guest" } // not logged in
+  | { status: "user"; role: "CUSTOMER" | "ORGANIZER"; points: number }
+  | { status: "unknown" }; // backend problem: we cannot tell, so we do not block the cart
+
+async function getViewer(): Promise<Viewer> {
+  try {
+    const me = await apiFetchServer<{ role: "CUSTOMER" | "ORGANIZER"; points: number }>("/profile/me");
+    return { status: "user", role: me.role, points: me.points ?? 0 };
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+      return { status: "guest" };
+    }
+    return { status: "unknown" };
   }
 }
 
@@ -105,16 +125,23 @@ async function loadCart(query: CartQuery): Promise<CartResult> {
   };
 }
 
-function CartMessage({ title, message }: { title: string; message: string }) {
+type CartMessageProps = {
+  title: string;
+  message: string;
+  actionHref?: string;
+  actionLabel?: string;
+};
+
+function CartMessage({ title, message, actionHref = "/browse", actionLabel = "Browse Events" }: CartMessageProps) {
   return (
     <div className="space-y-3 py-8 text-center">
       <p className="font-semibold text-neutral-900">{title}</p>
       <p className="text-sm text-neutral-500">{message}</p>
       <Link
-        href="/browse"
-        className="inline-block rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+        href={actionHref}
+        className="inline-block rounded-full bg-[#EA580C] px-5 py-2 text-sm font-semibold text-white hover:bg-[#BB4D00]"
       >
-        Browse Events
+        {actionLabel}
       </Link>
     </div>
   );
@@ -126,21 +153,31 @@ type CartPageProps = {
 
 export default async function CartPage({ searchParams }: CartPageProps) {
   const query = await searchParams;
-  const result = await loadCart(query);
+
+  // Load the ticket data and the logged-in user at the same time
+  const [result, viewer] = await Promise.all([loadCart(query), getViewer()]);
+
+  // Not logged in: go back to the event page and open the login popup there
+  if (viewer.status === "guest") {
+    redirect(query.event ? `/events/${encodeURIComponent(query.event)}?login=1` : "/browse");
+  }
 
   return (
     <main className="bg-amber-50/60 px-4 py-10">
       <div className="mx-auto w-full max-w-xl space-y-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="border-b border-neutral-100 pb-4 text-xl font-bold text-neutral-900">Event Cart</h1>
 
-        {result.ok ? (
+        {viewer.status === "user" && viewer.role === "ORGANIZER" ? (
+          <CartMessage
+            title="Organizer accounts cannot buy tickets"
+            message="Please log in with a customer account to buy tickets."
+          />
+        ) : result.ok ? (
           <CartView
-            // key changes when the ticket or quantity in the URL changes
-            // → React creates a fresh CartView, so its state starts from the new quantity
             key={`${result.ticket.ticketTypeId}-${result.quantity}`}
             ticket={result.ticket}
             initialQuantity={result.quantity}
-            pointBalance={null} // TODO: fetch from GET /api/profile/me after login is ready
+            pointBalance={viewer.status === "user" ? viewer.points : null}
           />
         ) : (
           <CartMessage title={result.title} message={result.message} />

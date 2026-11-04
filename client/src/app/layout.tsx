@@ -4,6 +4,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { AuthModalProvider } from "@/components/providers/auth-modal-provider";
+import Navbar from "@/components/menubar/navbar";
+import Footer from "@/components/menubar/footer";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -34,6 +36,7 @@ export const metadata: Metadata = {
   ],
 };
 
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -49,7 +52,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white">
         <AuthModalProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <Navbar />
+            {children}
+            <Footer />
+            </AuthProvider>
         </AuthModalProvider>
       </body>
     </html>

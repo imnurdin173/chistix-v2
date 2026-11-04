@@ -2,23 +2,13 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, MessageSquare, Star } from "lucide-react";
+import type { EventReview } from "@/types/review";
 
-/*
- * NOTE: Reviews
- * The backend has no endpoint to read reviews yet, so the page passes an empty list.
- * When `GET /api/events/:id/reviews` is ready:
- *   1. Fetch the reviews in app/events/[slug]/page.tsx
- *   2. Map them to ReviewItem and pass them: <EventReviews reviews={...} />
- */
-
-// Shape follows the Review model in schema.prisma
-export type ReviewItem = {
-  id: string;
-  userName: string;
-  ratingScore: number; // 1–5
-  reviewDesc: string;
-  reviewCustomerAt: string;
-  orgReply: string | null;
+// Reviews come from GET /api/reviews/:eventId/reviews (loaded in app/events/[slug]/page.tsx)
+type EventReviewsProps = {
+  reviews: EventReview[];
+  average: number; // average rating calculated by the backend
+  total: number; // number of reviews
 };
 
 function StarRating({ score }: { score: number }) {
@@ -50,7 +40,7 @@ function formatReviewDate(iso: string) {
   });
 }
 
-export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
+export default function EventReviews({ reviews, average, total }: EventReviewsProps) {
   const [index, setIndex] = useState(0);
 
   // EMPTY STATE: no reviews yet
@@ -68,7 +58,6 @@ export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
   }
 
   const review = reviews[index];
-  const average = reviews.reduce((sum, r) => sum + r.ratingScore, 0) / reviews.length;
 
   const goPrev = () => setIndex((index - 1 + reviews.length) % reviews.length);
   const goNext = () => setIndex((index + 1) % reviews.length);
@@ -80,7 +69,7 @@ export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
         <p className="flex items-center gap-1 text-sm text-neutral-600">
           <Star className="size-4 fill-amber-400 text-amber-400" />
           <span className="font-semibold text-neutral-900">{average.toFixed(1)}</span>
-          <span>({reviews.length} reviews)</span>
+          <span>({total} {total === 1 ? "review" : "reviews"})</span>
         </p>
       </div>
 
@@ -96,25 +85,22 @@ export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
 
         <article className="flex flex-1 gap-4 rounded-xl bg-white p-4">
           <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-amber-100 text-lg font-bold text-amber-700 ring-2 ring-orange-400">
-            {getInitials(review.userName)}
+            {getInitials(review.user.name)}
           </div>
 
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-bold text-neutral-900">{review.userName}</p>
-                <p className="text-[11px] text-neutral-400">{formatReviewDate(review.reviewCustomerAt)}</p>
+                <p className="text-sm font-bold text-neutral-900">{review.user.name}</p>
+                <p className="text-[11px] text-neutral-400">{formatReviewDate(review.createdAt)}</p>
               </div>
-              <StarRating score={review.ratingScore} />
+              <StarRating score={review.rating} />
             </div>
 
-            <p className="text-sm leading-relaxed text-neutral-700">{review.reviewDesc}</p>
-
-            {review.orgReply && (
-              <div className="rounded-lg border-l-2 border-orange-400 bg-orange-50 px-3 py-2 text-xs text-neutral-700">
-                <span className="font-semibold text-orange-700">Organizer reply: </span>
-                {review.orgReply}
-              </div>
+            {review.reviewDesc ? (
+              <p className="text-sm leading-relaxed text-neutral-700">{review.reviewDesc}</p>
+            ) : (
+              <p className="text-xs italic text-neutral-400">No written review.</p>
             )}
           </div>
         </article>
@@ -136,7 +122,7 @@ export default function EventReviews({ reviews }: { reviews: ReviewItem[] }) {
             type="button"
             aria-label={`Show review ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-2 rounded-full transition-all ${i === index ? "w-5 bg-orange-500" : "w-2 bg-neutral-300"}`}
+            className={`h-2 rounded-full transition-all ${i === index ? "w-5 bg-[#EA580C]" : "w-2 bg-neutral-300"}`}
           />
         ))}
       </div>

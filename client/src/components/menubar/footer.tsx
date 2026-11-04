@@ -1,5 +1,7 @@
+"use client"
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const services = [
   { label: "Events", href: "/events" },
@@ -82,6 +84,12 @@ const socials = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
+  const disabledRoutes = ["/login", "/register", "/verify-registration","/forgot-password","/reset-password"];
+  const isAuthPage = pathname.startsWith("/auth") || disabledRoutes.includes(pathname);
+
+    if (isAuthPage) return null;
+
   return (
     <footer className="mt-auto w-full border-t bg-amber-100">
       <div className="container mx-auto max-w-8xl px-4 pt-10 sm:px-6">

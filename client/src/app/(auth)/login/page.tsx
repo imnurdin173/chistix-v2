@@ -6,7 +6,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-
+import { Metadata } from "next";
 const LOGIN_PATH = "/auth/login";
 
 export default function LoginPage() {
@@ -53,7 +53,7 @@ export default function LoginPage() {
           {formMsgError}
         </div>
       )}
-
+      ////
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700">Email</label>

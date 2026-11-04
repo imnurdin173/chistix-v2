@@ -1,80 +1,43 @@
-"use client"
-import React, { useEffect, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { apiFetch } from '@/lib/api'
-import OrganizerSidebar from '@/components/sidebar/organizerSidebar'
-import NavbarOrganizer from '@/components/menubar/navbarOrganizer'
-import Footer from '@/components/menubar/footer'
-import type { AuthUser } from '@/types/organizer'
+"use client";
 
-export default function DashboardLayout({
-    children,
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
+import OrganizerSidebar from "@/components/sidebar/organizerSidebar";
+
+export default function EventsLayout({
+  children,
 }: {
-    children: React.ReactNode
+  children: React.ReactNode;
 }) {
-    const router = useRouter()
-    const pathname = usePathname()
-    const [user, setUser] = useState<AuthUser | null>(null)
-    const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-    useEffect(() => {
-        const checkUserRole = async () => {
-            const token = window.localStorage.getItem("token")
+  useEffect(() => {
+    if (loading) return;
+    if (!user) router.replace("/error/401");
+    else if (user.role !== "ORGANIZER") router.replace("/error/403");
+  }, [user, loading, router]);
 
-            if(!token) {
-                router.replace("/error/401")
-                return
-            }
-
-            try {
-                const profile = await apiFetch<AuthUser>("/auth/me", {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`
-                    }
-                })
-
-                const isOrganizerOnlyRoute = 
-                pathname.startsWith("/dashboard/events") ||
-                pathname.startsWith("/dashboard/vouchers") ||
-                pathname.startsWith("/dashboard/attendee-list") ||
-                pathname.startsWith("dashboard/reviews")
-
-                if(profile.role !== "ORGANIZER" && isOrganizerOnlyRoute) {
-                    router.replace("/error/403")
-                    return
-                }
-
-                setUser(profile)
-            } catch (error) {
-                router.replace("/error/401")
-            } finally {
-                setIsCheckingAuth(false)
-            }
-        }
-        checkUserRole()
-    }, [pathname, router])
-
-    if (isCheckingAuth) {
-        return (
-            <div className='min-h-screen bg-[#faf8f4] flex items-center justify-center text-sm text-neutral-500'>
-                Verifying dashboard access ...
-            </div>
-        )
-    }
-
-    if(!user) return null
+  // Tahan render sampai terbukti ORGANIZER (mencegah konten sempat tampil)
+  if (loading || user?.role !== "ORGANIZER") {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-neutral-500">
+        Verifying organizer access ...
+      </div>
+    );
+  }
 
   return (
-    <div className='min-h-screen bg-[#faf8f4] text-neutral-800 font-sans flex flex-col'>
-        <NavbarOrganizer />
-        <div className='flex-1 w-full p-4 md:p-8'>
-            <div className='max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-start'>
-                {user.role === "ORGANIZER" && <OrganizerSidebar />}
-                <div className='flex-1 w-full'>{children}</div>
-            </div>
+    <div className="flex min-h-screen flex-col bg-[#faf8f4] font-sans text-neutral-800">
+      <div className="w-full flex-1 p-4 md:p-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 md:flex-row">
+          <OrganizerSidebar />
+          <div className="w-full flex-1">{children}</div>
         </div>
-        <Footer />
+      </div>
     </div>
-  )
+  );
 }
+
+////asdasd

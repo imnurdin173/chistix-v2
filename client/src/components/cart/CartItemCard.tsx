@@ -32,7 +32,7 @@ export default function CartItemCard({
         {/* Event info */}
         <div className="flex items-start gap-3">
           <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-amber-50">
-            <Ticket className="size-6 text-amber-600" />
+            <Ticket className="size-6 text-[#EA580C]" />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-bold text-neutral-900">{eventTitle}</h3>

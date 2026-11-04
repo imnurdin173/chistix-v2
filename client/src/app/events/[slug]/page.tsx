@@ -8,7 +8,9 @@ import TicketPanel from "@/components/events/detail/TicketPanel";
 import ShareCard from "@/components/events/detail/ShareCard";
 import SimilarEvents from "@/components/events/detail/SimilarEvents";
 import { apiFetch } from "@/lib/api";
+import { fetchEventReviews } from "@/lib/reviews";
 import type { EventDetail, TicketOption, TicketStatus } from "@/types/event";
+
 
 export const instant = false;
 
@@ -24,6 +26,7 @@ const getEvent = cache(async (slug: string) => {
 
 type EventDetailPageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ login?: string }>; // ?login=1 opens the login popup (sent here by the cart)
 };
 
 export async function generateMetadata({ params }: EventDetailPageProps): Promise<Metadata> {
@@ -32,11 +35,15 @@ export async function generateMetadata({ params }: EventDetailPageProps): Promis
   return { title: event ? event.title : "Event not found" };
 }
 
-export default async function EventDetailPage({ params }: EventDetailPageProps) {
+export default async function EventDetailPage({ params, searchParams }: EventDetailPageProps) {
   const { slug } = await params;
+  const { login } = await searchParams;
   const event = await getEvent(slug);
 
   if (!event) notFound();
+
+  // Latest 10 reviews + average rating (null if the request fails: the section shows "No reviews yet")
+  const reviewData = await fetchEventReviews(event.id, 10).catch(() => null);
 
   const now = new Date();
   const tickets: TicketOption[] = event.ticketTypes.map((t) => {
@@ -57,6 +64,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   });
 
   return (
+    <>
     <main className="bg-amber-50/60 py-8">
       <div className="mx-auto max-w-6xl space-y-8 px-4">
         <h1 className="text-2xl font-bold text-neutral-900 md:text-3xl">{event.title}</h1>
@@ -84,12 +92,16 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
             <EventDescription description={event.description} />
 
-            <EventReviews reviews={[]} /> {/* TODO: pass real reviews once the backend endpoint exists */}
+            <EventReviews
+              reviews={reviewData?.reviews ?? []}
+              average={reviewData?.ratingSummary.average ?? 0}
+              total={reviewData?.ratingSummary.total ?? 0}
+            />
           </div>
 
           {/* RIGHT COLUMN (does NOT follow the scroll) */}
           <aside className="space-y-4">
-            <TicketPanel eventSlug={event.slug} tickets={tickets} />
+            <TicketPanel eventSlug={event.slug} tickets={tickets} openLoginOnLoad={login === "1"} />
             <ShareCard title={event.title} />
           </aside>
         </div>
@@ -97,5 +109,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <SimilarEvents category={event.category} excludeId={event.id} />
       </div>
     </main>
+    </>
   );
 }
