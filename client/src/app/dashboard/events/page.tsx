@@ -49,9 +49,19 @@ export default function EventsPage() {
         },
       );
 
+            const now = new Date();
       const formatted = res.events.map((evt) => {
         const startDateObj = evt.eventStartDate ? new Date(evt.eventStartDate) : null;
         const endDateObj = evt.eventEndDate ? new Date(evt.eventEndDate) : null;
+
+        let computedStatus = evt.eventStatus;
+        if (evt.eventStatus === "PUBLISHED" && startDateObj && endDateObj) {
+          if (now >= startDateObj && now <= endDateObj) {
+            computedStatus = "ONGOING";
+          } else if (now > endDateObj) {
+            computedStatus = "ENDED";
+          }
+        }
 
         const dateText =
           startDateObj && !isNaN(startDateObj.getTime())
@@ -87,11 +97,11 @@ export default function EventsPage() {
 
         return {
           ...evt,
+          eventStatus: computedStatus,
           dateText,
           timeRangeText,
         };
       });
-
       setEvents(formatted);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load events";
@@ -147,15 +157,20 @@ export default function EventsPage() {
     return priorityA - priorityB;
   });
 
-  const handleConfirmPublish = () => {
+    const handleConfirmPublish = async () => {
     if (!publishTarget) return;
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === publishTarget.id ? { ...e, eventStatus: "PUBLISHED" } : e,
-      ),
-    );
-    setIsPublishActionOpen(false);
-    setPublishTarget(null);
+    try {
+      await apiFetch(`/organizers/my-events/${publishTarget.id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ eventStatus: "PUBLISHED" }),
+      });
+      await fetchEvents();
+      setIsPublishActionOpen(false);
+      setPublishTarget(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to publish event");
+    }
   };
 
   const handleExecuteDelete = async () => {

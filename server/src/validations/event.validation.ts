@@ -1,5 +1,5 @@
 import z from "zod";
-import { EventCategory } from "@prisma/client";
+import { EventCategory, EventStatus } from "@prisma/client";
 
 export const eventBaseSchema = z.object({
   title: z.string().min(3, "Please input Title minimum 3 Character ").max(150),
@@ -71,6 +71,7 @@ export const eventIdOrSlugParamsSchema = z.object({
 
 export const updateEventSchema = eventBaseSchema.partial().extend({
   coverImages: z.array(z.url()).optional(),
+  EventStatus: z.enum(EventStatus).optional(),
 });
 
 export type updateEventInput = z.infer<typeof updateEventSchema>;

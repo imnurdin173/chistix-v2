@@ -17,6 +17,8 @@ import {
   deleteMyEvent,
   browseEvents,
   suggestEvents,
+  getMyAttendees,
+  getMyOrganizerTransactions
 } from "../services/event.service";
 import { successResponse } from "../utils/response";
 import {
@@ -208,6 +210,44 @@ export const browseEventsHandler = async (req: Request, res:Response, next: Next
     const {q} = browseEventsSchema.parse(req.query);
     const events = await browseEvents(q);
     return successResponse(res, 200, "Events fetched succesfully", {events}); 
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getMyAttendeesHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data = await getMyAttendees(req.user!.id);
+    return successResponse(res, 200, "Attendees fetched successfully", data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getMyOrganizerTransactionsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const organizerId = req.user!.id;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+    const status = req.query.status as string | undefined;
+    const eventId = req.query.eventId as string | undefined;
+
+    const result = await getMyOrganizerTransactions(organizerId, {
+      status,
+      eventId,
+      page,
+      limit,
+    });
+
+    return successResponse(res, 200, "Organizer transactions retrieved successfully", result);
   } catch (err) {
     next(err);
   }
