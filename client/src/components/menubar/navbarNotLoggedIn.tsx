@@ -57,12 +57,12 @@ export default function navbarNotLoggedIn() {
           />
         </Link>
 
-        <Link
+        {/* <Link
           href="#"
           className="hidden whitespace-nowrap text-base font-bold text-amber-500 hover:underline md:inline"
         >
           Create Event+
-        </Link>
+        </Link> */}
         <div className="mx-2 max-w-md flex-1 md:block">
           <SearchForm className="w-full" />
         </div>
@@ -139,13 +139,13 @@ export default function navbarNotLoggedIn() {
             >
               Discover
             </Link>
-            <Link
+            {/* <Link
               href="#"
               onClick={closeMenu}
               className="text-sm text-center  font-bold text-amber-500"
             >
               Create Event+
-            </Link>
+            </Link> */}
             <div className="flex flex-col gap-3">
               <Link
                 href="/login"

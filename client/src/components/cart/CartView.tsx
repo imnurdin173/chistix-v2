@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import CartItemCard from "./CartItemCard";
 import VoucherSection from "./VoucherSection";
@@ -8,6 +9,7 @@ import OrderSummary from "./OrderSummary";
 import PaymentSection from "./PaymentSection";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuthModal } from "@/components/providers/auth-modal-provider";
+import { paymentUrlKey } from "@/components/customer/PayNowButton";
 import { POINT_TO_RUPIAH } from "@/lib/constants";
 import type { CartTicket } from "@/types/cart";
 
@@ -29,6 +31,10 @@ function toFriendlyMessage(error: ApiError): string {
     case 404:
       return "The voucher code or ticket could not be found.";
     case 409:
+      // Unpaid order already exists → show the server's message (it has the order number)
+      if (error.message.toLowerCase().includes("unpaid order")) {
+      return error.message;
+      }
       return "This ticket is no longer available in that quantity. Please refresh the page and try again.";
     case 502:
       return "The payment service is not responding. Please try again in a moment.";
@@ -46,6 +52,7 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
   const [isUsingPoints, setIsUsingPoints] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [hasPendingOrder, setHasPendingOrder] = useState(false);
 
   // ----- DERIVED VALUES -----
   const maxQuantity = ticket.remaining;
@@ -67,6 +74,7 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
   async function handleCheckout() {
     setIsSubmitting(true);
     setCheckoutError("");
+    setHasPendingOrder(false);
 
     // Shape EXACTLY as the backend expects (createTransactionSchema)
     const payload = {
@@ -88,13 +96,22 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
 
       // Leave Chistix and go to the Midtrans payment page.
       // isSubmitting stays true so the button cannot be clicked twice while leaving.
-      window.location.href = transaction.paymentUrl;
+      // Keep the Midtrans link in this browser so the invoice can show "Pay Now" later
+      try {
+        localStorage.setItem(paymentUrlKey(transaction.id), transaction.paymentUrl);
+      } catch {
+        // storage blocked: checkout still works, only "Pay Now" will be missing
+      }
+
+      // replace(): pressing Back on Midtrans will not come back to this cart
+      window.location.replace(transaction.paymentUrl);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setCheckoutError("Please log in to continue your purchase.");
         openLogin();
       } else if (error instanceof ApiError) {
         setCheckoutError(toFriendlyMessage(error));
+        setHasPendingOrder(error.status === 409 && error.message.toLowerCase().includes("unpaid order"));
       } else {
         setCheckoutError("Failed to create the transaction. Please try again.");
       }
@@ -144,6 +161,15 @@ export default function CartView({ ticket, initialQuantity, pointBalance }: Cart
         error={checkoutError}
         onCheckout={handleCheckout}
       />
+
+      {hasPendingOrder && (
+        <Link
+          href="/dashboard-customer?tab=transactions"
+          className="block text-center text-sm font-semibold text-[#EA580C] hover:underline"
+        >
+          Go to My Transactions to pay or cancel it
+        </Link>
+      )}
     </>
   );
 }

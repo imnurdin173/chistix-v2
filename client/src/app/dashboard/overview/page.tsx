@@ -29,7 +29,7 @@ async function OverviewContent() {
   return (
     <>
       {isOrganizer ? <OrganizerSidebar /> : <CustomerSidebar />}
-          <div className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-xs border border-neutral-100">
+          <div className="w-full bg-white rounded-2xl shadow-xs border border-neutral-100">
       <div className="w-full flex-1 p-4 md:p-8">{isOrganizer ? <OrgOverviewDashboard /> : <CustOverviewDashboard />}</div>
     </div>
     </>

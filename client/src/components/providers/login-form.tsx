@@ -92,7 +92,7 @@ export default function LoginForm({
         onSuccess();
         
       } else {
-        // router.push(callbackURL);
+        router.push(callbackURL);
         window.location.href = callbackURL || "/";
         router.refresh();
       }
@@ -105,6 +105,7 @@ export default function LoginForm({
     } finally {
       setSubmitting(false);
     }
+    window.location.href = callbackURL || "/";
   };
 
   // async function handleGoogle() {

@@ -1,20 +1,16 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 import { AlertCircle } from "lucide-react";
 import EventCard from "@/components/events/EventCard";
 import CopyButton from "@/components/customer/CopyButton";
 import PaymentCountdown from "@/components/customer/PaymentCountdown";
 import TransactionStatusBadge from "@/components/customer/TransactionStatusBadge";
-import { requireCustomer } from "@/lib/auth.server";
+import type { CurrentUser } from "@/lib/auth.server";
 import { apiFetchServer } from "@/lib/api.server";
 import { apiFetch } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 import { getTransactionTotal } from "@/lib/transaction";
 import type { TransactionListResponse } from "@/types/transaction";
 import type { EventsResponse } from "@/types/event";
-
-export const instant = false;
-export const metadata: Metadata = { title: "Overview" };
 
 const FALLBACK_IMAGE = "https://placehold.co/400x360?text=No+Image";
 
@@ -46,9 +42,8 @@ function StatCard({ label, value, note }: { label: string; value: string; note: 
   );
 }
 
-export default async function OverviewPage() {
-  const user = await requireCustomer();
-
+// Tab "Overview" of /customer
+export default async function OverviewTab({ user }: { user: CurrentUser }) {
   const [transactionData, referral, eventData] = await Promise.all([
     safe(apiFetchServer<TransactionListResponse>("/transactions?limit=50")),
     safe(apiFetchServer<{ totalReferred: number }>("/profile/referral")),
@@ -133,7 +128,7 @@ export default async function OverviewPage() {
         <section className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold text-neutral-900">Recent Transactions</h2>
-            <Link href="/dashboard-customer/transactions" className="text-xs font-semibold text-[#EA580C] hover:underline">
+            <Link href="/dashboard-customer?tab=transactions" className="text-xs font-semibold text-[#EA580C] hover:underline">
               View all
             </Link>
           </div>

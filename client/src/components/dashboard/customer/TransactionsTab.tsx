@@ -1,16 +1,11 @@
 import Link from "next/link";
-import type { Metadata } from "next";
 import { Receipt } from "lucide-react";
 import TransactionStatusBadge from "@/components/customer/TransactionStatusBadge";
 import CancelOrderButton from "@/components/customer/CancelOrderButton";
-import { requireCustomer } from "@/lib/auth.server";
 import { apiFetchServer } from "@/lib/api.server";
 import { formatRupiah } from "@/lib/format";
 import { getTransactionTotal } from "@/lib/transaction";
 import type { TransactionDetail, TransactionListResponse, TransactionStatus } from "@/types/transaction";
-
-export const instant = false;
-export const metadata: Metadata = { title: "Transactions" };
 
 const PAGE_SIZE = 10;
 
@@ -24,17 +19,17 @@ const FILTERS: { label: string; value: TransactionStatus | "" }[] = [
 ];
 const VALID_STATUSES = FILTERS.map((f) => f.value).filter(Boolean) as string[];
 
-type TransactionsQuery = {
-  status?: string;
-  page?: string;
+type TransactionsTabProps = {
+  status?: string; // from ?status=
+  page?: string; // from ?page=
 };
 
+// Every link stays inside the Transactions tab of /customer
 function buildHref(status: string, page: number) {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ tab: "transactions" });
   if (status) params.set("status", status);
   if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return query ? `/dashboard-customer/transactions?${query}` : "/dashboard-customer/transactions";
+  return `/dashboard-customer?${params.toString()}`;
 }
 
 function formatDateTime(iso: string) {
@@ -78,14 +73,8 @@ function TransactionActions({ transaction }: { transaction: TransactionDetail })
 
 /* ---------- Page ---------- */
 
-type TransactionsPageProps = {
-  searchParams: Promise<TransactionsQuery>;
-};
-
-export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
-  await requireCustomer();
-
-  const query = await searchParams;
+// Tab "Transactions" of /customer
+export default async function TransactionsTab(query: TransactionsTabProps) {
   // Never trust the URL: only accept known statuses and a positive page number
   const status = query.status && VALID_STATUSES.includes(query.status) ? query.status : "";
   const page = Math.max(1, Math.floor(Number(query.page)) || 1);
@@ -143,7 +132,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             {status ? `No ${activeFilter.label.toLowerCase()} transactions` : "No transactions yet"}
           </p>
           {status ? (
-            <Link href="/dashboard-customer/transactions" className="text-sm font-semibold text-[#EA580C] hover:underline">
+            <Link href="/dashboard-customer?tab=transactions" className="text-sm font-semibold text-[#EA580C] hover:underline">
               Show all transactions
             </Link>
           ) : (

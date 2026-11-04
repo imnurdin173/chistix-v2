@@ -8,11 +8,13 @@ import { POINT_TO_RUPIAH } from "@/lib/constants";
 import type { TransactionDetail, TransactionStatus } from "@/types/transaction";
 import CancelOrderButton from "@/components/customer/CancelOrderButton";
 import PaymentCountdown from "@/components/customer/PaymentCountdown";
+import PayNowButton from "@/components/customer/PayNowButton";
+import PaymentStatusWatcher from "@/components/customer/PaymentStatusWatcher";
 
 export const instant = false;
 
 // Where "View My Tickets" goes (customer dashboard event list). Change here if the team picks another URL.
-const MY_TICKETS_URL = "/dashboard-customer/tickets";
+const MY_TICKETS_URL = "/dashboard-customer?tab=tickets";
 
 type InvoiceQuery = {
     id?: string;
@@ -175,6 +177,7 @@ export default async function InvoicePage({ searchParams }: InvoicePageProps) {
                             <p className="mt-1 text-2xl">
                                 <PaymentCountdown deadline={t.paymentDeadline} />
                             </p>
+                            <PaymentStatusWatcher transactionId={t.id} deadline={t.paymentDeadline} />
                         </div>
                     )}
 
@@ -217,12 +220,19 @@ export default async function InvoicePage({ searchParams }: InvoicePageProps) {
                 </section>
 
                 {/* ACTIONS */}
-                <Link
-                    href={primaryHref}
-                    className="block w-full rounded-full bg-[#EA580C] py-3 text-center text-sm font-bold text-white hover:bg-[#BB4D00]"
-                >
-                    {primaryLabel}
-                </Link>
+                {/* Pay Now: reopen the Midtrans page if the customer left before paying */}
+                {t.status === "WAITING_PAYMENT" && (
+                    <PayNowButton transactionId={t.id} serverPaymentUrl={t.paymentUrl} />
+                )}
+                {/* Hidden while waiting for payment: there are no tickets yet */}
+                {t.status !== "WAITING_PAYMENT" && (
+                    <Link
+                        href={primaryHref}
+                        className="block w-full rounded-full bg-[#EA580C] py-3 text-center text-sm font-bold text-white hover:bg-[#BB4D00]"
+                    >
+                        {primaryLabel}
+                    </Link>
+                )}
                 {t.status === "WAITING_PAYMENT" && (
                     <div className="text-center">
                         <CancelOrderButton transactionId={t.id} eventTitle={t.event.title} />

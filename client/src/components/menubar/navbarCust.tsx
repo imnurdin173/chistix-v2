@@ -93,12 +93,12 @@ useEffect(() => {
           
         </Link>
 
-        <Link
+        {/* <Link
           href="#"
           className="hidden whitespace-nowrap text-base font-bold text-amber-500 hover:underline md:inline"
         >
           Create Event+
-        </Link>
+        </Link> */}
         <div className="mx-2 max-w-md flex-1 md:block">
           <SearchForm className="w-full" />
         </div>
@@ -236,13 +236,13 @@ useEffect(() => {
                     </span>
                   </p>
                 </div>
-                <Link
+                {/* <Link
                   href="/organizer/create-event"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-600"
                 >
                   + Create Event
-                </Link>
+                </Link> */}
               </div>
 
               <div className="space-y-1 text-sm font-medium text-gray-700">
