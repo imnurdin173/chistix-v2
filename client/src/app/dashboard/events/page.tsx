@@ -14,12 +14,9 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+function getAuthHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -178,6 +175,7 @@ export default function EventsPage() {
 
   return (
     <main className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-xs border border-neutral-100">
+      
       <div className="flex justify-between items-center mb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-neutral-900">
