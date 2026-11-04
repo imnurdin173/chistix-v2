@@ -138,7 +138,7 @@ export default function VouchersPage() {
   });
 
   return (
-    <main className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-xs border border-neutral-100">
+    <div>
       <div className="flex justify-between items-center mb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-neutral-900">
@@ -306,6 +306,6 @@ export default function VouchersPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

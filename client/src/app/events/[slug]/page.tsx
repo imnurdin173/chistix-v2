@@ -66,7 +66,7 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
   return (
     <>
     <main className="bg-amber-50/60 py-8">
-      <div className="mx-auto max-w-6xl space-y-8 px-4">
+      <div className="mx-auto container max-w-8xl space-y-8 px-4">
         <h1 className="text-2xl font-bold text-neutral-900 md:text-3xl">{event.title}</h1>
 
         <div className="grid items-start gap-6 lg:grid-cols-[1fr_320px]">
@@ -74,7 +74,7 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
           <div className="space-y-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={event.thumbnailImage ?? "https://placehold.co/1200x800?text=No+Image"}
+              src={event.coverImages?.[0] ?? "https://placehold.co/1200x800?text=No+Image"}
               alt={event.title}
               className="aspect-[3/2] w-full rounded-2xl object-cover shadow-sm"
             />
@@ -100,7 +100,7 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
           </div>
 
           {/* RIGHT COLUMN (does NOT follow the scroll) */}
-          <aside className="space-y-4">
+          <aside className="lg:sticky lg:top-30 lg:h-[calc(55vh-8rem)] space-y-4">
             <TicketPanel eventSlug={event.slug} tickets={tickets} openLoginOnLoad={login === "1"} />
             <ShareCard title={event.title} />
           </aside>

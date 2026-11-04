@@ -90,8 +90,10 @@ export default function LoginForm({
       });
       if (onSuccess) {
         onSuccess();
+        
       } else {
         router.push(callbackURL);
+        window.location.href = callbackURL || "/";
         router.refresh();
       }
     } catch (err) {
@@ -103,6 +105,7 @@ export default function LoginForm({
     } finally {
       setSubmitting(false);
     }
+    window.location.href = callbackURL || "/";
   };
 
   // async function handleGoogle() {

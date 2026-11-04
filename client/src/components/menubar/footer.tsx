@@ -18,6 +18,7 @@ const supports = [
 ];
 
 const payments = [
+  { name: "Midtrans", src: "/finlogo/midtrans.svg", width: 80, height: 24 },
   { name: "DANA", src: "/finlogo/dana.svg", width: 80, height: 24 },
   { name: "QRIS", src: "/finlogo/qris.svg", width: 64, height: 24 },
 ];

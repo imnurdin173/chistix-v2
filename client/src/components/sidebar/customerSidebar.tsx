@@ -1,27 +1,33 @@
+"use client";
+
 import Link from "next/link";
-import { LayoutGrid, Receipt, Star, Ticket, type LucideIcon } from "lucide-react";
-import { CUSTOMER_TABS, customerTabHref, type CustomerTab } from "@/lib/customerTabs";
+import { usePathname } from "next/navigation";
+// import { KeyRound, LayoutGrid, Receipt, Ticket, UserRound } from "lucide-react";
+import { KeyRound, LayoutGrid, Receipt, Star, Ticket, UserRound } from "lucide-react";
 
-const TAB_ICONS: Record<CustomerTab, LucideIcon> = {
-  overview: LayoutGrid,
-  tickets: Ticket,
-  transactions: Receipt,
-  reviews: Star,
-};
+const MENU_ITEMS = [
+  { name: "Overview", href: "/dashboard/overview", icon: LayoutGrid },
+  { name: "My Tickets", href: "/dashboard/tickets", icon: Ticket },
+  { name: "Transactions", href: "/dashboard/transactions", icon: Receipt },
+  { name: "Reviews", href: "/dashboard/reviews", icon: Star },         
+//   { name: "Profile", href: "/profile", icon: UserRound },
+//   { name: "Change Password", href: "/change-password", icon: KeyRound },
+];
 
-// Menu of the customer dashboard. The page tells it which tab is open.
-export default function CustomerSidebar({ activeTab }: { activeTab: CustomerTab }) {
+export default function CustomerSidebar() {
+  const pathname = usePathname();
+
   return (
     <aside className="w-full shrink-0 rounded-2xl border border-neutral-100 bg-white p-4 shadow-xs md:w-64">
       <nav className="flex gap-1.5 overflow-x-auto md:flex-col md:overflow-visible">
-        {CUSTOMER_TABS.map((tab) => {
-          const Icon = TAB_ICONS[tab.value];
-          const isActive = tab.value === activeTab;
+        {MENU_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname.startsWith(item.href);
 
           return (
             <Link
-              key={tab.value}
-              href={customerTabHref(tab.value)}
+              key={item.href}
+              href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={`group flex shrink-0 items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 isActive
@@ -34,7 +40,7 @@ export default function CustomerSidebar({ activeTab }: { activeTab: CustomerTab 
                   isActive ? "text-[#BB4D00]" : "text-neutral-900 group-hover:text-[#BB4D00]"
                 }`}
               />
-              <span>{tab.label}</span>
+              <span>{item.name}</span>
             </Link>
           );
         })}

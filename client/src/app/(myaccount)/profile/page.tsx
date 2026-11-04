@@ -44,7 +44,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex w-full lg:w-1/2 bg-white rounded-xl mb-15 p-6 shadow-xs">
+    <div className="flex w-full lg:w-1/2 bg-white rounded-xl mb-15 p-6 border shadow-xs">
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-neutral-900">My Profile</h1>
         <dl className="space-y-3">

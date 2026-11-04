@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronRightIcon, HomeIcon, PhotoIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { apiFetch } from "@/lib/api";
+import {
+  ChevronRightIcon,
+  HomeIcon,
+  PhotoIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import { apiFetch, ApiError } from "@/lib/api";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface RegionOption {
@@ -13,20 +18,302 @@ interface RegionOption {
   name: string;
 }
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+type TierKey = "VIP" | "Regular" | "Presale";
+type SaveStatus = "DRAFT" | "PUBLISHED";
+
+interface TierForm {
+  enabled: boolean;
+  quota: string; // digits only, "" = empty (string so that "0" can be typed)
+  price: string;
+  anchorPrice: string;
 }
+
+interface ImageItem {
+  id: string;
+  file: File;
+  preview: string;
+}
+
+// Accept both { id } and { event: { id } } from POST /events
+interface CreatedEvent {
+  id?: string;
+  event?: { id: string };
+}
+
+const REGION_API = "https://www.emsifa.com/api-wilayah-indonesia/api";
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const TIER_ORDER: TierKey[] = ["VIP", "Regular", "Presale"];
+
+const INPUT_CLS =
+  "w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50";
+
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const digitsOnly = (v: string) => v.replace(/\D/g, "").slice(0, 12);
+const toNum = (v: string) => (v === "" ? 0 : Number(v));
+const toISO = (localValue: string) => new Date(localValue).toISOString();
+const isValidDate = (v: string) =>
+  v !== "" && !Number.isNaN(new Date(v).getTime());
+
+function isHttpUrl(value: string) {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validateImage(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return `"${file.name}" is not a JPG, PNG, or WEBP image.`;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return `"${file.name}" is larger than 5MB.`;
+  }
+  return null;
+}
+
+function describeError(err: unknown): string {
+  if (err instanceof ApiError) {
+    const details = err.errors
+      ?.map((e) => `${e.field ?? e.path ?? "field"}: ${e.message}`)
+      .join("; ");
+    return details ? `${err.message} (${details})` : err.message;
+  }
+  return err instanceof Error ? err.message : "Failed to save event";
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Small reusable pieces                                                     */
+/* -------------------------------------------------------------------------- */
+
+function FormRow({
+  label,
+  htmlFor,
+  required,
+  optional,
+  hint,
+  center,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  required?: boolean;
+  optional?: boolean;
+  hint?: string;
+  center?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 ${
+        center ? "items-center" : "items-start"
+      }`}
+    >
+      <label
+        htmlFor={htmlFor}
+        className={`text-sm font-medium text-neutral-700 ${center ? "" : "pt-2"}`}
+      >
+        {label} {required && <span className="text-red-500">*</span>}
+        {optional && (
+          <span className="text-xs text-neutral-400 font-normal">
+            (Optional)
+          </span>
+        )}
+        {hint && (
+          <span className="block text-xs font-normal text-neutral-400">
+            {hint}
+          </span>
+        )}
+      </label>
+      {/* min-w-0 lets grid cells shrink so wide inputs never overlap each other */}
+      <div className="sm:col-span-2 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * datetime-local that opens its calendar from ANY click on the field.
+ * Chrome/Edge desktop normally open it only from the tiny calendar icon.
+ */
+function DateTimeField({
+  id,
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  required,
+  variant = "page",
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  min?: string;
+  max?: string;
+  required?: boolean;
+  variant?: "page" | "card";
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    // A click on the native calendar icon (right edge) is already handled by the browser
+    const rect = el.getBoundingClientRect();
+    if (rect.right - e.clientX < 40) return;
+    try {
+      el.showPicker();
+    } catch {
+      // Unsupported browser / blocked context: native behaviour stays as is
+    }
+  };
+
+  return (
+    <div className="min-w-0">
+      <label htmlFor={id} className="text-xs text-neutral-400 block mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        ref={ref}
+        id={id}
+        type="datetime-local"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={handleClick}
+        className={`block w-full min-w-0 border border-neutral-200 px-3 py-2 text-xs cursor-pointer focus:outline-none focus:border-[#BB4D00] ${
+          variant === "card"
+            ? "rounded-lg bg-white"
+            : "rounded-xl bg-neutral-50"
+        }`}
+      />
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const id = useId();
+  return (
+    <div className="min-w-0">
+      <label htmlFor={id} className="text-xs text-neutral-500 block mb-1">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(digitsOnly(e.target.value))}
+        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
+      />
+    </div>
+  );
+}
+
+function TierCard({
+  title,
+  hint,
+  tier,
+  onChange,
+  locked,
+  priceLabel,
+  placeholders,
+  children,
+}: {
+  title: string;
+  hint: string;
+  tier: TierForm;
+  onChange: (patch: Partial<TierForm>) => void;
+  locked: boolean;
+  priceLabel: string;
+  placeholders: { quota: string; price: string; anchor: string };
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-bold text-neutral-800">{title}</span>
+          <p className="text-xs text-neutral-400">{hint}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={tier.enabled}
+          aria-label={`Enable ${title}`}
+          disabled={locked}
+          onClick={() => onChange({ enabled: !tier.enabled })}
+          className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+            tier.enabled ? "bg-[#EA580C]" : "bg-neutral-300"
+          }`}
+        >
+          <div
+            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+              tier.enabled ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+
+      {tier.enabled && (
+        <div className="space-y-3 pt-3 border-t border-neutral-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <NumberField
+              label="Quota"
+              placeholder={placeholders.quota}
+              value={tier.quota}
+              onChange={(quota) => onChange({ quota })}
+            />
+            <NumberField
+              label={priceLabel}
+              placeholder={placeholders.price}
+              value={tier.price}
+              onChange={(price) => onChange({ price })}
+            />
+            <NumberField
+              label="Original Price (Anchor, Optional)"
+              placeholder={placeholders.anchor}
+              value={tier.anchorPrice}
+              onChange={(anchorPrice) => onChange({ anchorPrice })}
+            />
+          </div>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Page                                                                      */
+/* -------------------------------------------------------------------------- */
 
 export default function CreateEventsPage() {
   const router = useRouter();
+  const uid = useId();
+  const fid = (name: string) => `${uid}-${name}`;
 
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("MUSIC");
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -37,34 +324,21 @@ export default function CreateEventsPage() {
   const [cityName, setCityName] = useState("");
   const [provincesList, setProvincesList] = useState<RegionOption[]>([]);
   const [citiesList, setCitiesList] = useState<RegionOption[]>([]);
+  const [regionError, setRegionError] = useState<string | null>(null);
 
   const [venueAddress, setVenueAddress] = useState("");
   const [venueMapsUrl, setVenueMapsUrl] = useState("");
 
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
-
-  const [coverFiles, setCoverFiles] = useState<File[]>([]);
-  const [coverPreviews, setCoverPreviews] = useState<string[]>([]);
-
+  const [thumbnail, setThumbnail] = useState<ImageItem | null>(null);
+  const [covers, setCovers] = useState<ImageItem[]>([]);
   const [videoUrl, setVideoUrl] = useState("");
 
-  const [totalTicket, setTotalTicket] = useState<number>(0);
-
-  const [isVipEnabled, setIsVipEnabled] = useState(true);
-  const [vipQuota, setVipQuota] = useState<number>(0);
-  const [vipPrice, setVipPrice] = useState<number>(0);
-  const [vipAnchorPrice, setVipAnchorPrice] = useState<number>(0);
-
-  const [isRegularEnabled, setIsRegularEnabled] = useState(true);
-  const [regularQuota, setRegularQuota] = useState<number>(0);
-  const [regularPrice, setRegularPrice] = useState<number>(0);
-  const [regularAnchorPrice, setRegularAnchorPrice] = useState<number>(0);
-
-  const [isPresaleEnabled, setIsPresaleEnabled] = useState(false);
-  const [presaleQuota, setPresaleQuota] = useState<number>(0);
-  const [presalePrice, setPresalePrice] = useState<number>(0);
-  const [presaleAnchorPrice, setPresaleAnchorPrice] = useState<number>(0);
+  const [totalTicket, setTotalTicket] = useState("");
+  const [tiers, setTiers] = useState<Record<TierKey, TierForm>>({
+    VIP: { enabled: true, quota: "", price: "", anchorPrice: "" },
+    Regular: { enabled: true, quota: "", price: "", anchorPrice: "" },
+    Presale: { enabled: false, quota: "", price: "", anchorPrice: "" },
+  });
   const [presaleStartDate, setPresaleStartDate] = useState("");
   const [presaleEndDate, setPresaleEndDate] = useState("");
 
@@ -72,217 +346,352 @@ export default function CreateEventsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const isTierLocked = totalTicket <= 0;
+  const errorRef = useRef<HTMLDivElement>(null);
+  const submittingRef = useRef(false);
+  const nextImageId = useRef(0);
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+  // Survive a failed save so a retry never duplicates uploads / event / tiers
+  const uploadCacheRef = useRef(new Map<File, string>());
+  const createdEventIdRef = useRef<string | null>(null);
+  const createdTiersRef = useRef<Set<TierKey>>(new Set());
 
-  const activeVipQuota = !isTierLocked && isVipEnabled ? vipQuota : 0;
-  const activeRegularQuota = !isTierLocked && isRegularEnabled ? regularQuota : 0;
-  const activePresaleQuota = !isTierLocked && isPresaleEnabled ? presaleQuota : 0;
+  /* ----------------------------- derived values ---------------------------- */
 
-  const allocatedQuota = activeVipQuota + activeRegularQuota + activePresaleQuota;
-  const remainingQuota = totalTicket - allocatedQuota;
+  const total = toNum(totalTicket);
+  const isTierLocked = total <= 0;
+  const allocatedQuota = TIER_ORDER.reduce(
+    (sum, key) => sum + (tiers[key].enabled ? toNum(tiers[key].quota) : 0),
+    0,
+  );
+  const remainingQuota = total - allocatedQuota;
+  const cities = provinceId ? citiesList : [];
+
+  const patchTier = (key: TierKey, patch: Partial<TierForm>) =>
+    setTiers((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+
+  const resetForm = () => {
+    setTitle("");
+    setCategory("");
+    setDescription("");
+    setStartDate("");
+    setEndDate("");
+    setProvinceId("");
+    setProvinceName("");
+    setCityId("");
+    setCityName("");
+    setVenueAddress("");
+    setVenueMapsUrl("");
+    setThumbnail(null);
+    setCovers([]);
+    setVideoUrl("");
+    setTotalTicket("");
+    setTiers({
+      VIP: { enabled: true, quota: "", price: "", anchorPrice: "" },
+      Regular: { enabled: true, quota: "", price: "", anchorPrice: "" },
+      Presale: { enabled: false, quota: "", price: "", anchorPrice: "" },
+    });
+    setPresaleStartDate("");
+    setPresaleEndDate("");
+    // Reset Checkbox & Error
+    setAgreedToTerms(false);
+    setErrorMessage(null);
+  };
+
+  /* --------------------------------- effects -------------------------------- */
 
   useEffect(() => {
-    fetch("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json")
-      .then((res) => res.json())
-      .then((data: RegionOption[]) => setProvincesList(data))
-      .catch(() => {});
+    const controller = new AbortController();
+    fetch(`${REGION_API}/provinces.json`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error("bad response");
+        return res.json();
+      })
+      .then((data: RegionOption[]) => {
+        setProvincesList(data);
+        setRegionError(null);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setRegionError("Failed to load provinces. Please reload the page.");
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    if (!provinceId) {
-      setCitiesList([]);
-      return;
-    }
-    fetch(
-      `https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${provinceId}.json`,
-    )
-      .then((res) => res.json())
-      .then((data: RegionOption[]) => setCitiesList(data))
-      .catch(() => {});
+    if (!provinceId) return;
+    const controller = new AbortController();
+    fetch(`${REGION_API}/regencies/${provinceId}.json`, {
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("bad response");
+        return res.json();
+      })
+      .then((data: RegionOption[]) => {
+        setCitiesList(data);
+        setRegionError(null);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setRegionError(
+          "Failed to load cities. Please choose the province again.",
+        );
+      });
+    // Aborting avoids an older province response overwriting a newer one
+    return () => controller.abort();
   }, [provinceId]);
+
+  // Release blob: preview URLs when leaving the page
+  useEffect(() => {
+    const urls = previewUrlsRef.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
+
+  // The error banner is at the top but the buttons are at the bottom: bring it into view
+  useEffect(() => {
+    if (errorMessage) {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [errorMessage]);
+
+  /* ------------------------------ image handling ---------------------------- */
+
+  const makeImageItem = (file: File): ImageItem => {
+    const preview = URL.createObjectURL(file);
+    previewUrlsRef.current.add(preview);
+    return { id: `img-${nextImageId.current++}`, file, preview };
+  };
+
+  const revokePreview = (preview: string) => {
+    URL.revokeObjectURL(preview);
+    previewUrlsRef.current.delete(preview);
+  };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setThumbnailFile(file);
-      setThumbnailPreview(URL.createObjectURL(file));
+    e.target.value = ""; // lets the same file be chosen again
+    if (!file) return;
+
+    const problem = validateImage(file);
+    if (problem) {
+      setErrorMessage(problem);
+      return;
     }
+    setErrorMessage(null);
+    if (thumbnail) revokePreview(thumbnail.preview);
+    setThumbnail(makeImageItem(file));
   };
 
   const handleCoversChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setCoverFiles((prev) => [...prev, ...files]);
-      const newPreviews = files.map((file) => URL.createObjectURL(file));
-      setCoverPreviews((prev) => [...prev, ...newPreviews]);
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // lets the same file be chosen again (e.g. after deleting it)
+    if (files.length === 0) return;
+
+    const accepted: File[] = [];
+    for (const file of files) {
+      const problem = validateImage(file);
+      if (problem) {
+        setErrorMessage(problem);
+      } else {
+        accepted.push(file);
+      }
     }
+    if (accepted.length === 0) return;
+    if (accepted.length === files.length) setErrorMessage(null);
+    setCovers((prev) => [...prev, ...accepted.map(makeImageItem)]);
   };
 
-  const handleRemoveCover = (index: number) => {
-    setCoverFiles((prev) => prev.filter((_, i) => i !== index));
-    setCoverPreviews((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveCover = (id: string) => {
+    const target = covers.find((c) => c.id === id);
+    if (target) revokePreview(target.preview);
+    setCovers((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const handleSave = async (targetStatus: "DRAFT" | "PUBLISHED") => {
-    setErrorMessage(null);
+  /* -------------------------------- validation ------------------------------ */
 
-    if (targetStatus === "PUBLISHED" && !agreedToTerms) {
-      setErrorMessage("Please agree to the Terms & Conditions before publishing.");
-      return;
+  const validate = (status: SaveStatus): string | null => {
+    if (status === "PUBLISHED" && !agreedToTerms) {
+      return "Please agree to the Terms & Conditions before publishing.";
     }
-
-    if (!title || title.trim().length < 3) {
-      setErrorMessage("Title must be at least 3 characters.");
-      return;
+    if (title.trim().length < 3) return "Title must be at least 3 characters.";
+    if (description.trim().length < 30) {
+      return "Description must be at least 30 characters long.";
     }
-
-    if (!description || description.trim().length < 30) {
-      setErrorMessage("Description must be at least 30 characters long.");
-      return;
+    if (!startDate || !endDate)
+      return "Please set both Start Date and End Date.";
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return "Start Date or End Date is not a valid date.";
     }
-
-    if (!startDate || !endDate) {
-      setErrorMessage("Please set both Start Date and End Date.");
-      return;
-    }
-
     if (new Date(endDate) < new Date(startDate)) {
-      setErrorMessage("End Date cannot be earlier than Start Date.");
-      return;
+      return "End Date cannot be earlier than Start Date.";
+    }
+    if (!provinceId || !cityId || venueAddress.trim().length < 5) {
+      return "Please complete the Location and Venue Address (min. 5 chars).";
+    }
+    if (venueMapsUrl.trim() && !isHttpUrl(venueMapsUrl.trim())) {
+      return "Google Maps URL must start with http:// or https://.";
+    }
+    if (videoUrl.trim() && !isHttpUrl(videoUrl.trim())) {
+      return "Video URL must start with http:// or https://.";
+    }
+    if (!thumbnail) {
+      return "Thumbnail Image is required. Please upload an image file.";
+    }
+    if (covers.length === 0) {
+      return "Cover Images are mandatory. Please upload at least 1 cover banner.";
+    }
+    if (total <= 0) return "Total ticket amount must be greater than 0.";
+
+    for (const key of TIER_ORDER) {
+      const t = tiers[key];
+      if (!t.enabled) continue;
+      if (toNum(t.quota) < 1) {
+        return `${key}: quota must be at least 1 (or turn this tier off).`;
+      }
+      if (t.price === "") {
+        return `${key}: please enter a price (use 0 for a free ticket).`;
+      }
+      if (t.anchorPrice !== "" && toNum(t.anchorPrice) <= toNum(t.price)) {
+        return `${key}: the original (anchor) price must be higher than the normal price.`;
+      }
     }
 
-    if (!provinceId || !cityId || !venueAddress || venueAddress.trim().length < 5) {
-      setErrorMessage("Please complete the Location and Venue Address (min. 5 chars).");
-      return;
-    }
-
-    if (!thumbnailFile && !thumbnailPreview) {
-      setErrorMessage("Thumbnail Image is required. Please upload an image file.");
-      return;
-    }
-
-    if (coverFiles.length === 0 && coverPreviews.length === 0) {
-      setErrorMessage("Cover Images are mandatory. Please upload at least 1 cover banner.");
-      return;
-    }
-
-    if (totalTicket <= 0) {
-      setErrorMessage("Total ticket amount must be greater than 0.");
-      return;
+    if (tiers.Presale.enabled) {
+      if (!isValidDate(presaleStartDate) || !isValidDate(presaleEndDate)) {
+        return "Presale: please set a valid start and end date.";
+      }
+      if (new Date(presaleEndDate) <= new Date(presaleStartDate)) {
+        return "Presale End Date must be later than Presale Start Date.";
+      }
+      if (new Date(presaleEndDate) > new Date(endDate)) {
+        return "Presale cannot end after the event ends.";
+      }
     }
 
     if (remainingQuota !== 0) {
-      setErrorMessage(
-        `Ticket quota allocation mismatch! Remaining: ${remainingQuota} tickets. Total active tickets must equal ${totalTicket}.`,
-      );
+      return `Ticket quota allocation mismatch! Remaining: ${remainingQuota} tickets. Total active tickets must equal ${total}.`;
+    }
+    return null;
+  };
+
+  /* ---------------------------------- save ---------------------------------- */
+
+  const handleSave = async (status: SaveStatus) => {
+    if (submittingRef.current) return;
+    setErrorMessage(null);
+
+    const problem = validate(status);
+    if (problem) {
+      setErrorMessage(problem);
       return;
     }
+    if (!thumbnail) return; // already guaranteed by validate(); narrows the type
+
+    submittingRef.current = true;
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-
-      let finalThumbnailUrl = thumbnailPreview;
-      if (thumbnailFile) {
-        finalThumbnailUrl = await uploadToCloudinary(thumbnailFile, "chistix/thumbnails");
-      }
-
-      let finalCoverUrls: string[] = [];
-      if (coverFiles.length > 0) {
-        const uploads = await Promise.all(
-          coverFiles.map((file) => uploadToCloudinary(file, "chistix/covers")),
-        );
-        finalCoverUrls = uploads;
-      } else {
-        finalCoverUrls = [finalThumbnailUrl];
-      }
-
-      const eventPayload = {
-        title,
-        category,
-        description,
-        eventStartDate: new Date(startDate).toISOString(),
-        eventEndDate: new Date(endDate).toISOString(),
-        provinceId,
-        provinceName,
-        cityId,
-        cityName,
-        venueAddress,
-        venueMapsUrl: venueMapsUrl.trim() || undefined,
-        thumbnailImage: finalThumbnailUrl,
-        coverImages: finalCoverUrls,
-        videoUrl: videoUrl.trim() || undefined,
-        scheduledPublishStart: isPresaleEnabled && presaleStartDate ? new Date(presaleStartDate).toISOString() : undefined,
-        scheduledPublishEnd: isPresaleEnabled && presaleEndDate ? new Date(presaleEndDate).toISOString() : undefined,
+      const uploadOnce = async (file: File, folder: string) => {
+        const cached = uploadCacheRef.current.get(file);
+        if (cached) return cached;
+        const url = await uploadToCloudinary(file, folder);
+        uploadCacheRef.current.set(file, url);
+        return url;
       };
 
-      const createdEvent = await apiFetch<{ id: string }>("/events", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(eventPayload),
-      });
+      // 1. Create the event once (a retry reuses the id instead of making a duplicate)
+      let eventId = createdEventIdRef.current;
+      if (!eventId) {
+        const thumbnailImage = await uploadOnce(
+          thumbnail.file,
+          "chistix/thumbnails",
+        );
+        const coverImages = await Promise.all(
+          covers.map((c) => uploadOnce(c.file, "chistix/covers")),
+        );
 
-      const eventId = createdEvent.id;
-
-      if (isVipEnabled && vipQuota > 0) {
-        await apiFetch(`/events/${eventId}/ticket-types`, {
+        const created = await apiFetch<CreatedEvent>("/events", {
           method: "POST",
-          headers: getAuthHeaders(),
           body: JSON.stringify({
-            name: "VIP",
-            priceNormal: Number(vipPrice),
-            priceAnchor: vipAnchorPrice > vipPrice ? Number(vipAnchorPrice) : undefined,
-            quota: Number(vipQuota),
-            saleStart: new Date(startDate).toISOString(),
-            saleEnd: new Date(endDate).toISOString(),
+            title: title.trim(),
+            category,
+            description: description.trim(),
+            eventStartDate: toISO(startDate),
+            eventEndDate: toISO(endDate),
+            provinceId,
+            provinceName,
+            cityId,
+            cityName,
+            venueAddress: venueAddress.trim(),
+            venueMapsUrl: venueMapsUrl.trim() || undefined,
+            thumbnailImage,
+            coverImages,
+            videoUrl: videoUrl.trim() || undefined,
+            scheduledPublishStart: tiers.Presale.enabled
+              ? toISO(presaleStartDate)
+              : undefined,
+            scheduledPublishEnd: tiers.Presale.enabled
+              ? toISO(presaleEndDate)
+              : undefined,
           }),
         });
+
+        const newId = created?.id ?? created?.event?.id;
+        if (!newId)
+          throw new Error("The server did not return the new event ID.");
+        createdEventIdRef.current = newId;
+        eventId = newId;
       }
 
-      if (isRegularEnabled && regularQuota > 0) {
+      // 2. Ticket tiers, one by one; tiers that already succeeded are skipped on retry
+      for (const key of TIER_ORDER) {
+        const t = tiers[key];
+        const quota = toNum(t.quota);
+        if (!t.enabled || quota <= 0 || createdTiersRef.current.has(key))
+          continue;
+
+        const price = toNum(t.price);
+        const anchor = toNum(t.anchorPrice);
+        const isPresale = key === "Presale";
+
         await apiFetch(`/events/${eventId}/ticket-types`, {
           method: "POST",
-          headers: getAuthHeaders(),
           body: JSON.stringify({
-            name: "Regular",
-            priceNormal: Number(regularPrice),
-            priceAnchor: regularAnchorPrice > regularPrice ? Number(regularAnchorPrice) : undefined,
-            quota: Number(regularQuota),
-            saleStart: new Date(startDate).toISOString(),
-            saleEnd: new Date(endDate).toISOString(),
+            name: key,
+            priceNormal: price,
+            priceAnchor: anchor > price ? anchor : undefined,
+            quota,
+            // NOTE: VIP/Regular go on sale at event start (original behaviour).
+            // Confirm with the backend whether sales should open earlier.
+            saleStart: toISO(isPresale ? presaleStartDate : startDate),
+            saleEnd: toISO(isPresale ? presaleEndDate : endDate),
           }),
         });
+        createdTiersRef.current.add(key);
       }
 
-      if (isPresaleEnabled && presaleQuota > 0) {
-        await apiFetch(`/events/${eventId}/ticket-types`, {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            name: "Presale",
-            priceNormal: Number(presalePrice),
-            priceAnchor: presaleAnchorPrice > presalePrice ? Number(presaleAnchorPrice) : undefined,
-            quota: Number(presaleQuota),
-            saleStart: new Date(presaleStartDate || startDate).toISOString(),
-            saleEnd: new Date(presaleEndDate || endDate).toISOString(),
-          }),
-        });
-      }
-
-      if (targetStatus === "PUBLISHED") {
+      // 3. Publish
+      if (status === "PUBLISHED") {
         await apiFetch(`/organizers/my-events/${eventId}`, {
           method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            eventStatus: "PUBLISHED",
-          }),
+          body: JSON.stringify({ eventStatus: "PUBLISHED" }),
         });
       }
-
+      resetForm();
       router.push("/dashboard/events");
+      router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save event";
-      setErrorMessage(message);
+      const base = describeError(err);
+      setErrorMessage(
+        createdEventIdRef.current
+          ? `${base} — your event was already created as a draft. Press the button again to retry the remaining steps (changes to the fields above are not re-sent).`
+          : base,
+      );
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -314,102 +723,90 @@ export default function CreateEventsPage() {
             Create New Event
           </h1>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Fill in the details below to save your event as draft or publish it directly
+            Fill in the details below to save your event as draft or publish it
+            directly
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+          <div
+            ref={errorRef}
+            role="alert"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700"
+          >
             {errorMessage}
           </div>
         )}
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Event Title <span className="text-red-500">*</span>
-            </label>
+        {/* Validation is custom (handleSave), so native validation is switched off */}
+        <form
+          noValidate
+          onSubmit={(e) => e.preventDefault()}
+          className="space-y-6"
+        >
+          <FormRow label="Event Title" htmlFor={fid("title")} required>
             <input
+              id={fid("title")}
               type="text"
               placeholder="e.g. Jakarta Soundfest 2026"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50"
-              required
+              className={INPUT_CLS}
             />
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Category <span className="text-red-500">*</span>
-            </label>
+          <FormRow label="Category" htmlFor={fid("category")} required>
             <select
+              id={fid("category")}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50 cursor-pointer"
+              className={`${INPUT_CLS} cursor-pointer`}
             >
               <option value="MUSIC">Music</option>
               <option value="SEMINAR">Seminar</option>
               <option value="TALKSHOW">Talkshow</option>
-              <option value="ARTS_THEATRE">Arts & Theatre</option>
+              <option value="ARTS_THEATRE">Arts &amp; Theatre</option>
               <option value="SPORTS">Sports</option>
               <option value="COMMUNITY">Community</option>
               <option value="EXHIBITION">Exhibition</option>
               <option value="OTHER">Other</option>
             </select>
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Schedule <span className="text-red-500">*</span>
-            </label>
-            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <span className="text-xs text-neutral-400 block mb-1">
-                  Start Date & Time <span className="text-red-500">*</span>
-                </span>
-                <input
-                  type="datetime-local"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#BB4D00] bg-neutral-50 cursor-pointer"
-                  required
-                />
-              </div>
-              <div>
-                <span className="text-xs text-neutral-400 block mb-1">
-                  End Date & Time <span className="text-red-500">*</span>
-                </span>
-                <input
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#BB4D00] bg-neutral-50 cursor-pointer"
-                  required
-                />
-              </div>
+          <FormRow label="Schedule" required>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <DateTimeField
+                id={fid("start")}
+                label="Start Date & Time"
+                value={startDate}
+                onChange={setStartDate}
+                required
+              />
+              <DateTimeField
+                id={fid("end")}
+                label="End Date & Time"
+                value={endDate}
+                onChange={setEndDate}
+                min={startDate || undefined}
+                required
+              />
             </div>
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Description <span className="text-red-500">*</span>
-            </label>
+          <FormRow label="Description" htmlFor={fid("description")} required>
             <textarea
+              id={fid("description")}
               rows={4}
               placeholder="Minimum 30 characters describing the event, performers, and highlights..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50 resize-none"
-              required
+              className={`${INPUT_CLS} resize-none`}
             />
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Province <span className="text-red-500">*</span>
-            </label>
+          <FormRow label="Province" htmlFor={fid("province")} required>
             <select
+              id={fid("province")}
               value={provinceId}
               onChange={(e) => {
                 const selectedId = e.target.value;
@@ -418,9 +815,9 @@ export default function CreateEventsPage() {
                 setProvinceName(found?.name || "");
                 setCityId("");
                 setCityName("");
+                setCitiesList([]);
               }}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50 cursor-pointer"
-              required
+              className={`${INPUT_CLS} cursor-pointer`}
             >
               <option value="">Select Province</option>
               {provincesList.map((p) => (
@@ -429,80 +826,76 @@ export default function CreateEventsPage() {
                 </option>
               ))}
             </select>
-          </div>
+            {regionError && (
+              <p className="mt-1 text-xs text-red-600">{regionError}</p>
+            )}
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              City / Regency <span className="text-red-500">*</span>
-            </label>
+          <FormRow label="City / Regency" htmlFor={fid("city")} required>
             <select
+              id={fid("city")}
               value={cityId}
               onChange={(e) => {
                 const selectedId = e.target.value;
-                const found = citiesList.find((c) => c.id === selectedId);
+                const found = cities.find((c) => c.id === selectedId);
                 setCityId(selectedId);
                 setCityName(found?.name || "");
               }}
               disabled={!provinceId}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50 disabled:opacity-50 cursor-pointer"
-              required
+              className={`${INPUT_CLS} disabled:opacity-50 cursor-pointer`}
             >
               <option value="">Select City / Regency</option>
-              {citiesList.map((c) => (
+              {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Venue Address <span className="text-red-500">*</span>
-            </label>
+          <FormRow label="Venue Address" htmlFor={fid("venue")} required>
             <input
+              id={fid("venue")}
               type="text"
               placeholder="e.g. GBK Senayan, Jl. Pintu Satu Senayan"
               value={venueAddress}
               onChange={(e) => setVenueAddress(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50"
-              required
+              className={INPUT_CLS}
             />
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Google Maps URL <span className="text-xs text-neutral-400 font-normal">(Optional)</span>
-            </label>
+          <FormRow label="Google Maps URL" htmlFor={fid("maps")} optional>
             <input
+              id={fid("maps")}
               type="url"
               placeholder="https://maps.google.com/..."
               value={venueMapsUrl}
               onChange={(e) => setVenueMapsUrl(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50"
+              className={INPUT_CLS}
             />
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Thumbnail Image <span className="text-red-500">*</span>
-            </label>
-            <div className="sm:col-span-2 space-y-3">
+          <FormRow label="Thumbnail Image" required>
+            <div className="space-y-3">
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-200 hover:border-[#BB4D00] rounded-xl p-4 cursor-pointer bg-neutral-50/50 transition-colors">
                 <PhotoIcon className="w-8 h-8 text-neutral-400 mb-1" />
-                <span className="text-xs font-semibold text-neutral-700">Choose Thumbnail Image</span>
-                <span className="text-[11px] text-neutral-400 mt-0.5">JPG, PNG, WEBP (Max 5MB)</span>
+                <span className="text-xs font-semibold text-neutral-700">
+                  Choose Thumbnail Image
+                </span>
+                <span className="text-[11px] text-neutral-400 mt-0.5">
+                  JPG, PNG, WEBP (Max 5MB)
+                </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={ALLOWED_IMAGE_TYPES.join(",")}
                   onChange={handleThumbnailChange}
                   className="hidden"
                 />
               </label>
-              {thumbnailPreview && (
+              {thumbnail && (
                 <div className="relative w-36 h-24 rounded-lg overflow-hidden border border-neutral-200">
                   <Image
-                    src={thumbnailPreview}
+                    src={thumbnail.preview}
                     alt="Thumbnail preview"
                     fill
                     className="object-cover"
@@ -511,36 +904,36 @@ export default function CreateEventsPage() {
                 </div>
               )}
             </div>
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Cover Images <span className="text-red-500">*</span>
-              <span className="block text-xs font-normal text-neutral-400">At least 1 cover banner</span>
-            </label>
-            <div className="sm:col-span-2 space-y-3">
+          <FormRow label="Cover Images" hint="At least 1 cover banner" required>
+            <div className="space-y-3">
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-200 hover:border-[#BB4D00] rounded-xl p-4 cursor-pointer bg-neutral-50/50 transition-colors">
                 <PhotoIcon className="w-8 h-8 text-neutral-400 mb-1" />
-                <span className="text-xs font-semibold text-neutral-700">Add Cover Images / Banner</span>
-                <span className="text-[11px] text-neutral-400 mt-0.5">Select multiple banners</span>
+                <span className="text-xs font-semibold text-neutral-700">
+                  Add Cover Images / Banner
+                </span>
+                <span className="text-[11px] text-neutral-400 mt-0.5">
+                  Select multiple banners (JPG, PNG, WEBP, max 5MB each)
+                </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={ALLOWED_IMAGE_TYPES.join(",")}
                   multiple
                   onChange={handleCoversChange}
                   className="hidden"
                 />
               </label>
 
-              {coverPreviews.length > 0 && (
+              {covers.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-                  {coverPreviews.map((preview, idx) => (
+                  {covers.map((cover, idx) => (
                     <div
-                      key={idx}
+                      key={cover.id}
                       className="relative h-20 rounded-lg overflow-hidden border border-neutral-200 group"
                     >
                       <Image
-                        src={preview}
+                        src={cover.preview}
                         alt={`Cover ${idx + 1}`}
                         fill
                         className="object-cover"
@@ -548,9 +941,10 @@ export default function CreateEventsPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveCover(idx)}
+                        onClick={() => handleRemoveCover(cover.id)}
                         className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-red-600 transition-colors cursor-pointer"
                         title="Delete cover"
+                        aria-label={`Delete cover ${idx + 1}`}
                       >
                         <TrashIcon className="w-3.5 h-3.5" />
                       </button>
@@ -559,43 +953,41 @@ export default function CreateEventsPage() {
                 </div>
               )}
             </div>
-          </div>
+          </FormRow>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-start">
-            <label className="text-sm font-medium text-neutral-700 pt-2">
-              Video URL <span className="text-xs text-neutral-400 font-normal">(Optional)</span>
-            </label>
+          <FormRow label="Video URL" htmlFor={fid("video")} optional>
             <input
+              id={fid("video")}
               type="url"
               placeholder="https://youtube.com/watch?v=..."
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
-              className="sm:col-span-2 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50"
+              className={INPUT_CLS}
             />
-          </div>
+          </FormRow>
 
           <div className="border-t border-neutral-100 pt-4" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-center">
-            <label className="text-sm font-medium text-neutral-700">
-              Total Ticket Amount <span className="text-red-500">*</span>
-            </label>
-            <div className="sm:col-span-2 flex items-center gap-3">
+          <FormRow
+            label="Total Ticket Amount"
+            htmlFor={fid("total")}
+            required
+            center
+          >
+            <div className="flex items-center gap-3">
               <input
-                type="number"
-                min={1}
+                id={fid("total")}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 placeholder="e.g. 500"
-                value={totalTicket || ""}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setTotalTicket(val);
-                }}
+                value={totalTicket}
+                onChange={(e) => setTotalTicket(digitsOnly(e.target.value))}
                 className="w-36 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#BB4D00] bg-neutral-50 font-bold"
-                required
               />
               <span
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
-                  totalTicket === 0
+                  total === 0
                     ? "bg-neutral-100 text-neutral-500"
                     : remainingQuota === 0
                       ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
@@ -604,7 +996,7 @@ export default function CreateEventsPage() {
                         : "bg-amber-100 text-amber-700 border border-amber-200"
                 }`}
               >
-                {totalTicket === 0
+                {total === 0
                   ? "Enter total ticket amount first"
                   : remainingQuota === 0
                     ? "Quota fully allocated!"
@@ -613,228 +1005,83 @@ export default function CreateEventsPage() {
                       : `Remaining quota: ${remainingQuota} tickets`}
               </span>
             </div>
-          </div>
+          </FormRow>
 
-          <div className={`space-y-4 pt-2 transition-opacity ${isTierLocked ? "opacity-50 pointer-events-none" : ""}`}>
+          {/* inert = not clickable AND not reachable with the keyboard while locked */}
+          <div
+            inert={isTierLocked}
+            className={`space-y-4 pt-2 transition-opacity ${
+              isTierLocked ? "opacity-50" : ""
+            }`}
+          >
             {isTierLocked && (
               <p className="text-xs text-amber-600 font-medium">
-                Please enter the Total Ticket Amount above to unlock and configure ticket tiers.
+                Please enter the Total Ticket Amount above to unlock and
+                configure ticket tiers.
               </p>
             )}
 
-            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-bold text-neutral-800">VIP Ticket</span>
-                  <p className="text-xs text-neutral-400">Enable if this event offers VIP tier</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={isTierLocked}
-                  onClick={() => setIsVipEnabled(!isVipEnabled)}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                    isVipEnabled ? "bg-[#EA580C]" : "bg-neutral-300"
-                  }`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      isVipEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+            <TierCard
+              title="VIP Ticket"
+              hint="Enable if this event offers VIP tier"
+              tier={tiers.VIP}
+              onChange={(patch) => patchTier("VIP", patch)}
+              locked={isTierLocked}
+              priceLabel="Normal Price (IDR)"
+              placeholders={{
+                quota: "e.g. 50",
+                price: "e.g. 500000",
+                anchor: "e.g. 750000",
+              }}
+            />
+
+            <TierCard
+              title="Regular Ticket"
+              hint="Enable if this event offers Regular tier"
+              tier={tiers.Regular}
+              onChange={(patch) => patchTier("Regular", patch)}
+              locked={isTierLocked}
+              priceLabel="Normal Price (IDR)"
+              placeholders={{
+                quota: "e.g. 150",
+                price: "e.g. 250000",
+                anchor: "e.g. 350000",
+              }}
+            />
+
+            <TierCard
+              title="Presale Ticket"
+              hint="Enable if this event offers early bird / presale pricing"
+              tier={tiers.Presale}
+              onChange={(patch) => patchTier("Presale", patch)}
+              locked={isTierLocked}
+              priceLabel="Presale Price (IDR)"
+              placeholders={{
+                quota: "e.g. 100",
+                price: "e.g. 150000",
+                anchor: "e.g. 250000",
+              }}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <DateTimeField
+                  id={fid("presale-start")}
+                  label="Presale Start Date"
+                  variant="card"
+                  value={presaleStartDate}
+                  onChange={setPresaleStartDate}
+                  max={presaleEndDate || endDate || undefined}
+                />
+                <DateTimeField
+                  id={fid("presale-end")}
+                  label="Presale End Date"
+                  variant="card"
+                  value={presaleEndDate}
+                  onChange={setPresaleEndDate}
+                  min={presaleStartDate || undefined}
+                  max={endDate || undefined}
+                />
               </div>
-
-              {isVipEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-neutral-200">
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Quota</label>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="e.g. 50"
-                      value={vipQuota || ""}
-                      onChange={(e) => setVipQuota(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      required={isVipEnabled}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Normal Price (IDR)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="e.g. 500000"
-                      value={vipPrice || ""}
-                      onChange={(e) => setVipPrice(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      required={isVipEnabled}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Original Price (Anchor, Optional)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="e.g. 750000"
-                      value={vipAnchorPrice || ""}
-                      onChange={(e) => setVipAnchorPrice(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-bold text-neutral-800">Regular Ticket</span>
-                  <p className="text-xs text-neutral-400">Enable if this event offers Regular tier</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={isTierLocked}
-                  onClick={() => setIsRegularEnabled(!isRegularEnabled)}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                    isRegularEnabled ? "bg-[#EA580C]" : "bg-neutral-300"
-                  }`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      isRegularEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {isRegularEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-neutral-200">
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Quota</label>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="e.g. 150"
-                      value={regularQuota || ""}
-                      onChange={(e) => setRegularQuota(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      required={isRegularEnabled}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Normal Price (IDR)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="e.g. 250000"
-                      value={regularPrice || ""}
-                      onChange={(e) => setRegularPrice(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      required={isRegularEnabled}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 block mb-1">Original Price (Anchor, Optional)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="e.g. 350000"
-                      value={regularAnchorPrice || ""}
-                      onChange={(e) => setRegularAnchorPrice(Number(e.target.value))}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-bold text-neutral-800">Presale Ticket</span>
-                  <p className="text-xs text-neutral-400">Enable if this event offers early bird / presale pricing</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={isTierLocked}
-                  onClick={() => setIsPresaleEnabled(!isPresaleEnabled)}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                    isPresaleEnabled ? "bg-[#EA580C]" : "bg-neutral-300"
-                  }`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      isPresaleEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {isPresaleEnabled && (
-                <div className="space-y-3 pt-3 border-t border-neutral-200">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Quota</label>
-                      <input
-                        type="number"
-                        min={1}
-                        placeholder="e.g. 100"
-                        value={presaleQuota || ""}
-                        onChange={(e) => setPresaleQuota(Number(e.target.value))}
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                        required={isPresaleEnabled}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Presale Price (IDR)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 150000"
-                        value={presalePrice || ""}
-                        onChange={(e) => setPresalePrice(Number(e.target.value))}
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                        required={isPresaleEnabled}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Original Price (Anchor, Optional)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="e.g. 250000"
-                        value={presaleAnchorPrice || ""}
-                        onChange={(e) => setPresaleAnchorPrice(Number(e.target.value))}
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Presale Start Date</label>
-                      <input
-                        type="datetime-local"
-                        value={presaleStartDate}
-                        onChange={(e) => setPresaleStartDate(e.target.value)}
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white"
-                        required={isPresaleEnabled}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Presale End Date</label>
-                      <input
-                        type="datetime-local"
-                        value={presaleEndDate}
-                        onChange={(e) => setPresaleEndDate(e.target.value)}
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-xs bg-white"
-                        required={isPresaleEnabled}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            </TierCard>
           </div>
 
           <div className="pt-2">
@@ -845,7 +1092,10 @@ export default function CreateEventsPage() {
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
                 className="w-4 h-4 text-[#EA580C] rounded border-neutral-300 focus:ring-[#BB4D00]"
               />
-              <span>I agree to the Terms & Conditions and certify that all event information is accurate.</span>
+              <span>
+                I agree to the Terms &amp; Conditions and certify that all event
+                information is accurate.
+              </span>
             </label>
           </div>
 

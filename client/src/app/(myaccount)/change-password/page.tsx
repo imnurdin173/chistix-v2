@@ -59,7 +59,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="flex w-full lg:w-1/2 bg-white rounded-xl mb-15 p-6 shadow-xs">
+    <div className="flex w-full lg:w-1/2 bg-white border rounded-xl mb-15 p-6 shadow-xs">
       <form onSubmit={handleChangePassword} className="space-y-6" noValidate>
         <h1 className="text-2xl font-bold text-neutral-900">Change Password</h1>
         {success && (

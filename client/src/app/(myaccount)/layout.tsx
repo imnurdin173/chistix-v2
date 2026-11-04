@@ -27,13 +27,16 @@ if(!loading && !user) router.replace("/login");
 
   return (
     <div className="">
-      <Navbar />
+      
 
-      <main className="container bg-amber-50 mx-auto flex flex-col md:flex-row md:items-start max-w-8xl items-center gap-4 px-4 mt-5">
+      <main className="  p-6 md:p-8  ">
+        <div className="container mx-auto flex flex-col md:flex-row md:items-start max-w-8xl items-center gap-4 px-4 mt-5">
         <SidebarMyAccount />
         {children}
+
+        </div>
       </main>
-      <Footer />
+      
     </div>
   );
 }

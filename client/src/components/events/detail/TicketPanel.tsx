@@ -88,7 +88,7 @@ export default function TicketPanel({ eventSlug, tickets, openLoginOnLoad = fals
   return (
     <section className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
       {/* VARIANT: ticket names only */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <label htmlFor="variant" className="block text-sm font-semibold text-neutral-900">
           Variant
         </label>
@@ -104,7 +104,38 @@ export default function TicketPanel({ eventSlug, tickets, openLoginOnLoad = fals
             </option>
           ))}
         </select>
-      </div>
+      </div> */}
+      <div className="space-y-2">
+  <label className="block text-sm font-semibold text-neutral-900">
+    Variant
+  </label>
+  <div className="flex flex-wrap gap-2">
+    {tickets.map((t) => {
+      const isSelected = selected.id === t.id;
+
+      return (
+        <label
+          key={t.id}
+          className={`cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+            isSelected
+              ? "border-[#EA580C] bg-[#EA580C] text-white shadow-xs"
+              : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400 hover:bg-neutral-50"
+          }`}
+        >
+          <input
+            type="radio"
+            name="ticketVariant"
+            value={t.id}
+            checked={isSelected}
+            onChange={() => handleSelectTicket(t.id)}
+            className="sr-only" // Menyembunyikan bulatan radio native browser
+          />
+          {t.name}
+        </label>
+      );
+    })}
+  </div>
+</div>
 
       {/* TICKET AMOUNT */}
       <div className="space-y-2">

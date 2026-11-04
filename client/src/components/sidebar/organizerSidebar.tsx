@@ -15,7 +15,7 @@ export default function OrganizerSidebar() {
   const pathname = usePathname();
 
   const menuItems = [
-    { name: "Overview", href: "/dashboard", icon: Squares2X2Icon },
+    { name: "Overview", href: "/dashboard/overview", icon: Squares2X2Icon },
     { name: "Events", href: "/dashboard/events", icon: CalendarIcon },
     { name: "Transactions", href: "/dashboard/transactions", icon: ReceiptPercentIcon },
     { name: "Attendee list", href: "/dashboard/attendee-list", icon: UserGroupIcon },

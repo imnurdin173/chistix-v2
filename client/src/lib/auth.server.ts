@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { ApiError } from "./api";
 import { apiFetchServer } from "./api.server";
+import { cache } from "react";
+import type { AuthUser } from "@/components/providers/auth-provider";
 
 // Shape of GET /api/profile/me
 export type CurrentUser = {
@@ -13,6 +15,8 @@ export type CurrentUser = {
   referralCode: string;
   createdAt: string;
 };
+
+const ME_PATH = "/auth/me";
 
 // Call at the top of every customer-only page (server side).
 // Not logged in → /error/401, wrong role → /error/403.
@@ -34,3 +38,13 @@ export async function requireCustomer(): Promise<CurrentUser> {
 
   return user;
 }
+
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
+  try {
+    const payload = await apiFetchServer<AuthUser | { user: AuthUser } | null>(ME_PATH);
+    return payload && "user" in payload ? payload.user : (payload as AuthUser | null);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return null;
+    throw err; 
+  }
+});
