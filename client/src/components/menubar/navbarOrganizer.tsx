@@ -84,7 +84,7 @@ export default function navbarOrganizer() {
         </Link>
 
         <Link
-          href="#"
+          href="/dashboard/events/create-events"
           className="hidden whitespace-nowrap text-base font-bold text-amber-500 hover:underline md:inline"
         >
           Create Event+
@@ -94,7 +94,7 @@ export default function navbarOrganizer() {
         </div>
 
         <Link
-          href="/events"
+          href="/browse"
           className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold lg:inline-flex"
         >
           Discover
@@ -105,7 +105,7 @@ export default function navbarOrganizer() {
           className="hidden shrink-0 items-center gap-4 lg:flex lg:gap-6 ml-auto"
         >
           <Link
-            href="/event-manager"
+            href="/dashboard"
             className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-neutral-800 hover:text-amber-700 transition sm:text-sm"
           >
             <Folder className="h-4 w-4 lg:h-6 lg:w-6 " />
@@ -223,7 +223,7 @@ export default function navbarOrganizer() {
 
               <div className="space-y-1 text-sm font-medium text-gray-700">
                 <Link
-                  href="/event-manager"
+                  href="/dashboard"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >

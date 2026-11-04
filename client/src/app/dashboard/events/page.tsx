@@ -177,7 +177,7 @@ export default function EventsPage() {
   };
 
   return (
-    <main className="w-full bg-white rounded-2xl p-6 md:p-8 shadow-xs border border-neutral-100">
+    <div>
       <div className="flex justify-between items-center mb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-neutral-900">
@@ -281,12 +281,14 @@ export default function EventsPage() {
                     className="hover:bg-neutral-50/50 transition-colors"
                   >
                     <td className="py-4 pr-4 max-w-64">
+                      <Link href={`/events/${event.slug}`} target="_blank">
                       <p className="font-semibold text-neutral-900 leading-snug line-clamp-2 px-4">
                         {event.title}
                       </p>
                       <p className="text-neutral-400 text-xs mt-0.5 px-4">
                         {event.venueAddress}, {event.cityName}
                       </p>
+                      </Link>
                     </td>
                     <td className="py-4 pr-4 whitespace-nowrap text-neutral-600">
                       <p className="font-semibold text-neutral-800">
@@ -396,6 +398,6 @@ export default function EventsPage() {
         }}
         onConfirmPublish={handleConfirmPublish}
       />
-    </main>
+    </div>
   );
 }

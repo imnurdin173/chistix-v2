@@ -13,7 +13,7 @@ export default function SidebarMyAccount() {
 
   const menuItems = [
     { name: "Profile", href: "/profile", icon: CircleUser },
-    { name: "ChangePassword", href: "/change-password", icon: KeyRound },
+    { name: "Change Password", href: "/change-password", icon: KeyRound },
 
     
   ];

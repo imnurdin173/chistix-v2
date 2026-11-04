@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 export default function TopBar() {
   const [isScrolled, setIsScrolled] = useState(false);
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleScroll = () => setIsScrolled(window.scrollY > 30);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -15,7 +15,7 @@ export default function TopBar() {
     <div
       id="navchild"
       className={`overflow-hidden bg-amber-200 transition-all duration-300 ${
-        isScrolled ? "max-h-0 py-0 opacity-0" : "max-h-10 py-1 opacity-100"
+        isScrolled ? "max-h-0 py-0 opacity-0" : "max-h-10 py-0 opacity-100"
       }`}
     >
       <div className="text-sm text-amber-800">

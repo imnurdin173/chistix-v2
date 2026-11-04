@@ -90,8 +90,10 @@ export default function LoginForm({
       });
       if (onSuccess) {
         onSuccess();
+        
       } else {
-        router.push(callbackURL);
+        // router.push(callbackURL);
+        window.location.href = callbackURL || "/";
         router.refresh();
       }
     } catch (err) {

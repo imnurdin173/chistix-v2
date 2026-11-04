@@ -41,11 +41,20 @@ export default function navbarCust() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+useEffect(() => {
+  const handleScroll = () => {
+    const currentScroll = window.scrollY;
+    
+    if (currentScroll > 30) {
+      setIsScrolled(true);
+    } else if (currentScroll < 10) { // Buffer gap di angka 20px
+      setIsScrolled(false);
+    }
+  };
+
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  return () => window.removeEventListener("scroll", handleScroll);
+}, []);
 
   const { user, loading, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -95,7 +104,7 @@ export default function navbarCust() {
         </div>
 
         <Link
-          href="/events"
+          href="/browse"
           className="hidden items-center gap-0.5 whitespace-nowrap text-sm font-bold md:inline-flex"
         >
           Discover
@@ -113,14 +122,14 @@ export default function navbarCust() {
             <span>Cart</span>
           </Link>
           <Link
-            href="/tickets"
+            href="/dashboard/transactions"
             className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-neutral-800 hover:text-amber-700 transition sm:text-sm"
           >
             <Ticket className="h-4 w-4 lg:h-6 lg:w-6 " />
             <span>Transactions</span>
           </Link>
           <Link
-            href="/event-manager"
+            href="/dashboard"
             className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-neutral-800 hover:text-amber-700 transition sm:text-sm"
           >
             <Folder className="h-4 w-4 lg:h-6 lg:w-6 " />
@@ -238,7 +247,7 @@ export default function navbarCust() {
 
               <div className="space-y-1 text-sm font-medium text-gray-700">
                 <Link
-                  href="/event-manager"
+                  href="/dashboard"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
@@ -259,13 +268,6 @@ export default function navbarCust() {
                   className="block rounded px-2 py-2 hover:bg-amber-50"
                 >
                   Profile
-                </Link>
-                <Link
-                  href="/tickets"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block rounded px-2 py-2 hover:bg-amber-50"
-                >
-                  Your Ticket
                 </Link>
                 <Link
                   href="/change-password"
