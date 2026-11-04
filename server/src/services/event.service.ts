@@ -211,3 +211,121 @@ export const browseEvents = async (q?: string) => {
     orderBy: {title: "asc"},
   });
 };
+
+export const getMyAttendees = async (organizerId: string) => {
+  const attendees = await prisma.tickets.findMany({
+    where: {
+      transaction: {
+        event: { organizerId, deletedAt: null },
+        status: "PAID",
+        deletedAt: null,
+      },
+      deletedAt: null,
+    },
+    include: {
+      transaction: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          event: { select: { id: true, title: true } },
+          ticketType: { select: { id: true, name: true, priceNormal: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return attendees.map((t) => ({
+    id: t.id,
+    ticketCode: t.ticketCode,
+    customerName: t.transaction.user.name,
+    email: t.transaction.user.email,
+    eventId: t.transaction.event.id,
+    eventName: t.transaction.event.title,
+    ticketTier: t.transaction.ticketType.name,
+    quantity: 1,
+    totalPaid: t.transaction.ticketType.priceNormal,
+    status: t.isAttended ? "ATTENDED" : "REGISTERED",
+    checkInTime: t.attendedAt ? t.attendedAt.toISOString() : null,
+  }));
+};
+
+export const getMyOrganizerTransactions = async (
+  organizerId: string,
+  query: {
+    status?: string;
+    eventId?: string;
+    page: number;
+    limit: number;
+  }
+) => {
+  const { status, eventId, page, limit } = query;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    deletedAt: null,
+    event: {
+      organizerId,
+      deletedAt: null,
+      ...(eventId && eventId !== "ALL" ? { id: eventId } : {}),
+    },
+    ...(status && status !== "ALL" ? { status } : {}),
+  };
+
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            thumbnailImage: true,
+          },
+        },
+        ticketType: {
+          select: {
+            id: true,
+            name: true,
+            priceNormal: true,
+          },
+        },
+        voucher: {
+          select: {
+            id: true,
+            code: true,
+          },
+        },
+      },
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+
+  return {
+    transactions: transactions.map((t) => ({
+      ...t,
+      totalPrice:
+        t.quantity * t.priceAtPurchase -
+        t.discountAmount -
+        t.couponAmount -
+        (t.pointsUsed || 0),
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
+};
